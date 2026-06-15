@@ -230,16 +230,19 @@ class Studio {
   }
 
   saveData(silent = false) {
-    // Les fotos incrustades (data URIs) poden superar la quota de localStorage.
-    // Si passa, no és greu: l'exportació llegeix this.scenes de memòria.
+    // Versió completa (amb fotos) per a l'Studio
+    try { localStorage.setItem('vg-studio-scenes', JSON.stringify(this.scenes)); } catch(e) {}
+    // Versió per al Tour: sense data URIs (les fotos ja estan a IndexedDB)
     try {
-      const json = JSON.stringify(this.scenes);
-      localStorage.setItem('vg-studio-scenes', json);
-      localStorage.setItem('vg-tour-scenes', json);
-      if (!silent) this.showToast('Guardat correctament');
-    } catch (e) {
-      if (!silent) this.showToast('Desat en memòria (massa gran per al navegador)');
-    }
+      const stripped = this.scenes.map(s => {
+        if (typeof s.image === 'string' && s.image.startsWith('data:')) {
+          const { image, ...rest } = s; return rest;
+        }
+        return s;
+      });
+      localStorage.setItem('vg-tour-scenes', JSON.stringify(stripped));
+    } catch(e) {}
+    if (!silent) this.showToast('Guardat correctament');
   }
 
   get currentScene() { return this.scenes[this.currentIdx]; }

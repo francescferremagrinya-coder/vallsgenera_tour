@@ -861,7 +861,7 @@ class VirtualTour {
     document.getElementById('info-close').addEventListener('click', () => this.hideInfoPanel());
     document.getElementById('prev-scene').addEventListener('click', () => this.prevScene());
     document.getElementById('next-scene').addEventListener('click', () => this.nextScene());
-    document.getElementById('menu-toggle').addEventListener('click', () => this.toggleSidebar());
+    document.getElementById('scenes-tab').addEventListener('click', () => this.toggleSidebar());
     document.getElementById('sidebar-overlay').addEventListener('click', () => this.closeSidebar());
     document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
 
@@ -1001,7 +1001,6 @@ class VirtualTour {
     if (!this.pointerDown) {
       this.lon+=this.velLon; this.lat+=this.velLat;
       this.velLon*=.93; this.velLat*=.93;
-      if (performance.now()-this.userInteractedAt > 3000) this.lon+=.018;
     }
     this.lat=Math.max(-85,Math.min(85,this.lat));
     const phi   = THREE.MathUtils.degToRad(90-this.lat);
