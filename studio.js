@@ -197,8 +197,8 @@ class Studio {
   }
 
   /* ── Init ── */
-  init() {
-    this.loadData();
+  async init() {
+    await this.loadData();
     this.setupThree();
     this.renderSceneList();
     this.switchScene(0, false);
@@ -206,13 +206,22 @@ class Studio {
     this.animate();
   }
 
-  /* ── Data (localStorage) ── */
-  loadData() {
+  /* ── Data ── */
+  async loadData() {
+    // 1) Treball en curs guardat localment (té prioritat)
     const saved = localStorage.getItem('vg-studio-scenes');
     if (saved) {
       try { this.scenes = JSON.parse(saved); return; } catch(e) {}
     }
-    // First run: use tour.js DEFAULT SCENES
+    // 2) Primer cop en aquest origen: carrega el scenes.json publicat (si n'hi ha)
+    try {
+      const r = await fetch('scenes.json', { cache: 'no-store' });
+      if (r.ok) {
+        const data = await r.json();
+        if (Array.isArray(data) && data.length) { this.scenes = data; return; }
+      }
+    } catch(e) {}
+    // 3) Si no, escenes per defecte de tour.js
     if (typeof SCENES !== 'undefined') {
       this.scenes = JSON.parse(JSON.stringify(SCENES));
     } else {
@@ -416,11 +425,15 @@ class Studio {
     document.getElementById('prop-name').value = s.name || '';
     document.getElementById('prop-color').value = s.color || '#0F6E56';
     document.getElementById('prop-color-val').textContent = s.color || '#0F6E56';
-    document.getElementById('prop-image-path').value = s.image || '';
+    const imgIsEmbedded = typeof s.image === 'string' && s.image.startsWith('data:');
+    // No aboquem el data URI (enorme) al camp de ruta
+    document.getElementById('prop-image-path').value = imgIsEmbedded ? '' : (s.image || '');
     document.getElementById('photo-name').textContent =
       this._photoUrls[s.id]
         ? (s._photoFilename || 'Foto carregada')
-        : (s.image ? `Ruta: ${s.image}` : 'Arrossega o clica per seleccionar');
+        : imgIsEmbedded
+          ? 'Foto incrustada ✓'
+          : (s.image ? `Ruta: ${s.image}` : 'Arrossega o clica per seleccionar');
 
     // Hotspot mini list
     this.renderHsMiniList();
@@ -656,7 +669,10 @@ class Studio {
     s.name  = document.getElementById('prop-name').value.trim() || s.name;
     s.color = document.getElementById('prop-color').value;
     s.shade = this.darkenHex(s.color, 20);
-    s.image = document.getElementById('prop-image-path').value.trim() || undefined;
+    // No esborris una foto incrustada (data URI) si el camp de ruta és buit
+    const pathVal = document.getElementById('prop-image-path').value.trim();
+    if (pathVal) s.image = pathVal;
+    else if (!(typeof s.image === 'string' && s.image.startsWith('data:'))) s.image = undefined;
     this.renderSceneList();
     document.getElementById('status-scene').textContent = s.name;
   }
@@ -874,7 +890,10 @@ class Studio {
       document.getElementById('prop-color-val').textContent = e.target.value;
     });
     document.getElementById('prop-image-path').addEventListener('change', e => {
-      this.currentScene.image = e.target.value.trim() || undefined;
+      const v = e.target.value.trim();
+      const s = this.currentScene;
+      if (v) s.image = v;
+      else if (!(typeof s.image === 'string' && s.image.startsWith('data:'))) s.image = undefined;
     });
 
     // Photo upload
