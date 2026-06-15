@@ -689,52 +689,76 @@ class Studio {
       openBtn.style.pointerEvents = v ? '' : 'none';
     }, { once: false });
 
-    // Estat de les fotos
+    // Estat de les fotos (s'incrustaran dins de scenes.json)
     const photoNote = document.getElementById('em-photo-note');
     PhotoStore.keys().then(keys => {
       const stored = new Set(keys);
-      const withPhoto = this.scenes.filter(s => stored.has(s.id));
+      const withPhoto = this.scenes.filter(s => stored.has(s.id)).length;
       const missing   = this.scenes.filter(s => !stored.has(s.id)).map(s => s.name);
       let msg = '';
-      if (withPhoto.length) msg += `✓ ${withPhoto.length} foto(s) llestes per descarregar. `;
-      if (missing.length)   msg += `Sense foto: ${missing.join(', ')}.`;
+      if (withPhoto) msg += `✓ ${withPhoto} foto/es s'incrustaran dins de scenes.json. `;
+      if (missing.length) msg += `Escenes sense foto: ${missing.join(', ')}.`;
       photoNote.textContent = msg;
     }).catch(() => { photoNote.textContent = ''; });
   }
 
-  exportJSON() {
-    // Clean copy without internal fields
-    const exportData = this.scenes.map(s => {
+  /* Recomprimeix una foto 360° a una mida raonable i la torna com a data URI base64.
+     Així pot viatjar dins de scenes.json sense necessitar la carpeta images/.   */
+  async blobToEmbeddedDataURL(blob) {
+    const MAX_W = 4096;            // amplada màxima (equirectangular 2:1)
+    const QUALITY = 0.82;          // qualitat JPEG
+    const bitmap = await createImageBitmap(blob).catch(() => null);
+    if (!bitmap) {
+      // Sense suport de createImageBitmap: incrusta el fitxer tal qual
+      return await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.onerror = () => res(null);
+        fr.readAsDataURL(blob);
+      });
+    }
+    let w = bitmap.width, h = bitmap.height;
+    if (w > MAX_W) { h = Math.round(h * MAX_W / w); w = MAX_W; }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+    bitmap.close && bitmap.close();
+    return canvas.toDataURL('image/jpeg', QUALITY);
+  }
+
+  async exportJSON() {
+    const btn = document.getElementById('em-download');
+    const origHTML = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Preparant fotos…'; }
+
+    let embedded = 0;
+    // Còpia neta amb les fotos incrustades dins de cada escena
+    const exportData = [];
+    for (const s of this.scenes) {
       const copy = { ...s };
       delete copy._photoFilename;
-      return copy;
-    });
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      delete copy._photoUrl;
+      let blob = null;
+      try { blob = await PhotoStore.get(s.id); } catch(e) {}
+      if (blob) {
+        const dataUrl = await this.blobToEmbeddedDataURL(blob);
+        if (dataUrl) { copy.image = dataUrl; embedded++; }
+      }
+      // Si no hi ha foto a IndexedDB, es manté el que hi hagi a copy.image
+      // (per exemple una ruta o un data URI ja existent).
+      exportData.push(copy);
+    }
+
+    const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'scenes.json';
-    a.click();
+    document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
-    this.showToast('scenes.json descarregat');
-  }
 
-  /* Descarrega totes les fotos pujades amb el nom correcte (per pujar-les a images/) */
-  async downloadPhotos() {
-    let count = 0;
-    for (const s of this.scenes) {
-      let blob = null;
-      try { blob = await PhotoStore.get(s.id); } catch(e) {}
-      if (!blob) continue;
-      const filename = (s.image && s.image.split('/').pop()) || `${s.id}.jpg`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
-      count++;
-      await new Promise(r => setTimeout(r, 350)); // separa les descàrregues
-    }
-    this.showToast(count ? `${count} foto(s) descarregada(es) → puja-les a images/` : 'No hi ha fotos pujades');
+    if (btn) { btn.disabled = false; btn.innerHTML = origHTML; }
+    const mb = (blob.size / 1048576).toFixed(1);
+    this.showToast(`scenes.json descarregat (${embedded} foto/es, ${mb} MB)`);
   }
 
   /* ── Toast ── */
@@ -935,7 +959,6 @@ class Studio {
     document.getElementById('em-close2').addEventListener('click', () =>
       document.getElementById('export-modal').classList.add('hidden'));
     document.getElementById('em-download').addEventListener('click', () => this.exportJSON());
-    document.getElementById('em-download-photos').addEventListener('click', () => this.downloadPhotos());
     document.querySelector('.em-overlay').addEventListener('click', () =>
       document.getElementById('export-modal').classList.add('hidden'));
 

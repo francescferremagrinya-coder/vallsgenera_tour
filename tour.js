@@ -426,11 +426,40 @@ class VirtualTour {
   /* ── Init ── */
   init() {
     this.setupThree();
+    this.buildSidebarNav();
     this.buildDots();
     this.setupEvents();
     this.loadScene(0, false);
     this.animate();
     setTimeout(() => document.getElementById('controls-hint')?.classList.add('hidden'), 5000);
+  }
+
+  /* ── Reconstrueix els botons del menú lateral segons les escenes reals ── */
+  buildSidebarNav() {
+    const nav = document.querySelector('.dept-nav');
+    if (!nav) return;
+    // Conserva l'etiqueta "Departaments", elimina els botons antics
+    nav.querySelectorAll('.dept-btn').forEach(b => b.remove());
+    const pin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+    this.scenes.forEach((s, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'dept-btn' + (i === 0 ? ' active' : '');
+      btn.dataset.index = i;
+      btn.innerHTML =
+        `<span class="dept-icon">${pin}</span>` +
+        `<span class="dept-name">${this.escapeHtml(s.name)}</span>` +
+        `<span class="dept-arrow">›</span>`;
+      btn.addEventListener('click', () => {
+        this.loadScene(i);
+        this.closeSidebar();
+      });
+      nav.appendChild(btn);
+    });
+  }
+
+  escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   /* ── Three.js ── */
@@ -836,12 +865,7 @@ class VirtualTour {
     document.getElementById('sidebar-overlay').addEventListener('click', () => this.closeSidebar());
     document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
 
-    document.querySelectorAll('.dept-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        this.loadScene(parseInt(btn.dataset.index, 10));
-        this.closeSidebar();
-      });
-    });
+    // (Els botons .dept-btn reben el seu handler a buildSidebarNav)
 
     // Lightbox close
     document.getElementById('lb-close').addEventListener('click', () => this.closeLightbox());
@@ -1081,9 +1105,7 @@ window.addEventListener('DOMContentLoaded', () => {
           const dotsEl = document.getElementById('scene-dots');
           dotsEl.innerHTML = '';
           window.tour.buildDots();
-          document.querySelectorAll('.dept-btn .dept-name').forEach((el, i) => {
-            if (SCENES[i]) el.textContent = SCENES[i].name;
-          });
+          window.tour.buildSidebarNav();
           window.tour.loadScene(idx, false);
         } catch(err) { location.reload(); }
       });
