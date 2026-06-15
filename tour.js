@@ -506,12 +506,43 @@ class VirtualTour {
   buildHotspots(sceneData) {
     const overlay = document.getElementById('hotspots-overlay');
     overlay.innerHTML = '';
+
     sceneData.hotspots.forEach(hs => {
       const el = document.createElement('div');
       el.className = `hotspot hotspot-${hs.type}`;
       el.dataset.lon = hs.lon;
       el.dataset.lat = hs.lat;
 
+      /* Text overlay – sempre visible, sense icona */
+      if (hs.type === 'text') {
+        const s = hs.style || {};
+        el.innerHTML = `<div class="text-overlay" style="
+          font-size:${s.fontSize || 22}px;
+          font-weight:${s.bold ? '700' : '400'};
+          font-style:${s.italic ? 'italic' : 'normal'};
+          color:${s.color || '#ffffff'};
+          background:${s.background || 'rgba(0,0,0,0.45)'}
+        ">${hs.content || ''}</div>`;
+        overlay.appendChild(el);
+        return;
+      }
+
+      /* Navegació – fletxes animades */
+      if (hs.type === 'nav') {
+        const chevSvg = `<svg class="nav-chevron" viewBox="0 0 22 11" fill="none"
+          stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="1,9 11,1 21,9"/></svg>`;
+        el.innerHTML = `
+          <div class="nav-ring">
+            <div class="nav-arrows">${chevSvg}${chevSvg}${chevSvg}</div>
+          </div>
+          <div class="nav-scene-label">${hs.title}</div>`;
+        el.addEventListener('click', e => { e.stopPropagation(); this.handleHotspot(hs); });
+        overlay.appendChild(el);
+        return;
+      }
+
+      /* Hotspot estàndard (info, video, image, link) */
       const inner = document.createElement('div');
       inner.className = 'hotspot-inner';
       inner.innerHTML = HS_ICONS[hs.type] || HS_ICONS.info;
@@ -524,10 +555,7 @@ class VirtualTour {
       el.appendChild(label);
       overlay.appendChild(el);
 
-      el.addEventListener('click', e => {
-        e.stopPropagation();
-        this.handleHotspot(hs);
-      });
+      el.addEventListener('click', e => { e.stopPropagation(); this.handleHotspot(hs); });
     });
   }
 
@@ -605,16 +633,17 @@ class VirtualTour {
     this._lbOpen(hs.title, 'video');
     const body = document.getElementById('lb-body');
     body.className = 'lb-video';
-    const isEmbed = /youtube\.com\/embed|player\.vimeo\.com/.test(hs.videoUrl);
+    const src = hs.videoLocal || hs.videoUrl || '';
+    const isEmbed = /youtube\.com\/embed|player\.vimeo\.com/.test(src);
     if (isEmbed) {
       const iframe = document.createElement('iframe');
-      iframe.src = hs.videoUrl + (hs.videoUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+      iframe.src = src + (src.includes('?') ? '&' : '?') + 'autoplay=1';
       iframe.allow = 'autoplay; fullscreen; picture-in-picture';
       iframe.allowFullscreen = true;
       body.appendChild(iframe);
     } else {
       const video = document.createElement('video');
-      video.src = hs.videoUrl; video.controls = true; video.autoplay = true;
+      video.src = src; video.controls = true; video.autoplay = true;
       body.appendChild(video);
     }
     if (hs.caption) document.getElementById('lb-caption').textContent = hs.caption;
@@ -851,6 +880,9 @@ class VirtualTour {
 
 /* ── Boot ── */
 window.addEventListener('DOMContentLoaded', () => {
+  // Només s'executa a la pàgina del tour (no al Studio)
+  if (!document.getElementById('panorama-canvas')) return;
+
   if (typeof THREE === 'undefined') {
     document.getElementById('loading').innerHTML =
       '<p style="color:white;padding:24px;text-align:center;line-height:1.7">' +
@@ -859,32 +891,48 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-  // Si hi ha dades del Studio (localStorage), sobreescriu les escenes per defecte
+  function applyScenes(data) {
+    if (Array.isArray(data) && data.length > 0) {
+      SCENES.length = 0;
+      data.forEach(s => SCENES.push(s));
+    }
+  }
+
+  // 1) localStorage (Studio al mateix navegador)
   try {
     const saved = localStorage.getItem('vg-tour-scenes');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        SCENES.length = 0;
-        parsed.forEach(s => SCENES.push(s));
-      }
-    }
+    if (saved) applyScenes(JSON.parse(saved));
   } catch(e) {}
 
-  // Intenta llegir scenes.json (funciona en servidor HTTP / GitHub Pages)
+  // 2) scenes.json (GitHub Pages / servidor)
   fetch('scenes.json')
     .then(r => r.ok ? r.json() : null)
-    .then(data => {
-      if (data && Array.isArray(data) && data.length > 0) {
-        SCENES.length = 0;
-        data.forEach(s => SCENES.push(s));
-      }
-    })
-    .catch(() => {}) // silencia l'error en file://
+    .then(data => { if (data) applyScenes(data); })
+    .catch(() => {})
     .finally(() => {
-      setTimeout(() => {
-        window.tour = new VirtualTour();
-        document.getElementById('loading').classList.add('hidden');
-      }, 500);
+      window.tour = new VirtualTour();
+      document.getElementById('loading').classList.add('hidden');
+
+      // Quan el Studio guarda, recarrega el tour automàticament
+      window.addEventListener('storage', e => {
+        if (e.key === 'vg-tour-scenes') {
+          showReloadBanner();
+        }
+      });
     });
 });
+
+function showReloadBanner() {
+  let b = document.getElementById('reload-banner');
+  if (b) return;
+  b = document.createElement('div');
+  b.id = 'reload-banner';
+  b.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);' +
+    'background:#0F6E56;color:white;padding:10px 20px;border-radius:8px;z-index:999;' +
+    'display:flex;gap:12px;align-items:center;font-size:13px;font-weight:600;' +
+    'box-shadow:0 4px 20px rgba(0,0,0,0.4);';
+  b.innerHTML = 'El Studio ha guardat canvis. <button onclick="location.reload()" ' +
+    'style="background:white;color:#0F6E56;border:none;border-radius:5px;' +
+    'padding:4px 12px;font-weight:700;cursor:pointer">Actualitzar</button>';
+  document.body.appendChild(b);
+}

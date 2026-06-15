@@ -9,27 +9,43 @@ const STUDIO_HS_ICONS = {
   video: `<svg viewBox="0 0 24 24" fill="white" stroke="none"><path d="M8 5.14v14l11-7-11-7z"/></svg>`,
   image: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
   link:  `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
-  nav:   `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`
+  nav:   `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>`,
+  text:  `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>`
 };
 
 /* ── Camps dinàmics per cada tipus de hotspot ── */
 function dynamicFields(type, hs = {}, scenes = [], currentId = '') {
+  const s = hs.style || {};
   switch (type) {
     case 'info':
       return `<div class="pp-field">
         <label>Contingut</label>
         <textarea id="hs-content" rows="5" placeholder="Text informatiu que apareixerà al panell...">${hs.content || ''}</textarea>
       </div>`;
+
     case 'video':
       return `<div class="pp-field">
-        <label>URL del vídeo</label>
-        <input type="text" id="hs-videoUrl" placeholder="https://www.youtube.com/embed/ID_VIDEO" value="${hs.videoUrl || ''}">
-        <p style="font-size:10.5px;color:var(--text-muted);margin-top:4px">YouTube embed: youtube.com/embed/ID · Vimeo: player.vimeo.com/video/ID</p>
+        <label>Font del vídeo</label>
+        <div class="video-source-tabs">
+          <button class="vsrc-tab ${!hs.videoLocal ? 'active' : ''}" data-src="web">YouTube / Vimeo</button>
+          <button class="vsrc-tab ${hs.videoLocal ? 'active' : ''}" data-src="local">Fitxer local</button>
+        </div>
+      </div>
+      <div id="hs-video-web" class="pp-field" ${hs.videoLocal ? 'style="display:none"' : ''}>
+        <label>URL embed</label>
+        <input type="text" id="hs-videoUrl" placeholder="https://www.youtube.com/embed/ID" value="${hs.videoLocal ? '' : (hs.videoUrl || '')}">
+        <p class="field-hint">youtube.com/embed/ID_VIDEO &nbsp;·&nbsp; player.vimeo.com/video/ID</p>
+      </div>
+      <div id="hs-video-local" class="pp-field" ${!hs.videoLocal ? 'style="display:none"' : ''}>
+        <label>Ruta del vídeo</label>
+        <input type="text" id="hs-videoLocal" placeholder="videos/nom-video.mp4" value="${hs.videoLocal || ''}">
+        <p class="field-hint">Posa el fitxer a la carpeta <code>videos/</code> del repositori</p>
       </div>
       <div class="pp-field">
         <label>Peu de vídeo <span class="label-hint">(opcional)</span></label>
         <input type="text" id="hs-caption" placeholder="Descripció del vídeo" value="${hs.caption || ''}">
       </div>`;
+
     case 'image':
       return `<div class="pp-field">
         <label>URL o ruta de la imatge</label>
@@ -39,6 +55,7 @@ function dynamicFields(type, hs = {}, scenes = [], currentId = '') {
         <label>Peu de foto <span class="label-hint">(opcional)</span></label>
         <input type="text" id="hs-caption" placeholder="Descripció de la imatge" value="${hs.caption || ''}">
       </div>`;
+
     case 'link':
       return `<div class="pp-field">
         <label>URL de l'enllaç</label>
@@ -48,16 +65,60 @@ function dynamicFields(type, hs = {}, scenes = [], currentId = '') {
         <label>Descripció <span class="label-hint">(opcional)</span></label>
         <textarea id="hs-linkDesc" rows="2" placeholder="Breu descripció de l'enllaç...">${hs.linkDesc || ''}</textarea>
       </div>`;
+
     case 'nav': {
       const opts = scenes
-        .filter(s => s.id !== currentId)
-        .map(s => `<option value="${s.id}" ${hs.targetScene === s.id ? 'selected' : ''}>${s.name}</option>`)
+        .filter(sc => sc.id !== currentId)
+        .map(sc => `<option value="${sc.id}" ${hs.targetScene === sc.id ? 'selected' : ''}>${sc.name}</option>`)
         .join('');
       return `<div class="pp-field">
         <label>Escena de destí</label>
         <select id="hs-targetScene">${opts}</select>
       </div>`;
     }
+
+    case 'text':
+      return `<div class="pp-field">
+        <label>Contingut del text</label>
+        <input type="text" id="hs-content" placeholder="Text que apareixerà a la panoràmica" value="${hs.content || ''}">
+      </div>
+      <div class="pp-field">
+        <label>Mida (px)</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="range" id="hs-fontSize" min="12" max="80" value="${s.fontSize || 22}"
+            oninput="document.getElementById('hs-fontSize-val').textContent=this.value+'px'" style="flex:1">
+          <span id="hs-fontSize-val" style="min-width:34px;text-align:right;font-size:12px">${s.fontSize || 22}px</span>
+        </div>
+      </div>
+      <div class="pp-field">
+        <label>Color del text</label>
+        <div class="color-row">
+          <input type="color" id="hs-text-color" value="${s.color || '#ffffff'}"
+            oninput="document.getElementById('hs-text-color-val').textContent=this.value">
+          <span id="hs-text-color-val" style="font-size:11px;font-family:monospace">${s.color || '#ffffff'}</span>
+        </div>
+      </div>
+      <div class="pp-field">
+        <label>Fons (color + opacitat)</label>
+        <div class="color-row">
+          <input type="color" id="hs-bg-color" value="${s.bgColor || '#000000'}">
+          <input type="range" id="hs-bg-opacity" min="0" max="100" value="${s.bgOpacity ?? 45}"
+            oninput="document.getElementById('hs-bg-val').textContent=this.value+'%'" style="flex:1">
+          <span id="hs-bg-val" style="min-width:30px;font-size:12px">${s.bgOpacity ?? 45}%</span>
+        </div>
+      </div>
+      <div class="pp-field">
+        <label>Estil tipogràfic</label>
+        <div style="display:flex;gap:14px">
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="hs-bold" ${s.bold ? 'checked' : ''}> <b>Negreta</b>
+          </label>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="hs-italic" ${s.italic ? 'checked' : ''}> <i>Cursiva</i>
+          </label>
+        </div>
+      </div>`;
+
     default: return '';
   }
 }
@@ -233,14 +294,29 @@ class Studio {
     overlay.innerHTML = '';
     (this.currentScene.hotspots || []).forEach(hs => {
       const el = document.createElement('div');
-      el.className = `s-hotspot s-hs-${hs.type}${this.selectedHsId === hs.id ? ' selected' : ''}`;
+      const selected = this.selectedHsId === hs.id;
+      el.className = `s-hotspot s-hs-${hs.type}${selected ? ' selected' : ''}`;
       el.dataset.lon = hs.lon;
       el.dataset.lat = hs.lat;
       el.dataset.id  = hs.id;
-      el.innerHTML = `
-        <div class="s-hotspot-inner">${STUDIO_HS_ICONS[hs.type] || STUDIO_HS_ICONS.info}</div>
-        <div class="s-hotspot-lbl">${hs.title}</div>
-      `;
+
+      if (hs.type === 'nav') {
+        const chev = `<svg class="s-nav-chevron" viewBox="0 0 24 10" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,9 12,1 23,9"/></svg>`;
+        el.innerHTML = `<div class="s-nav-ring">${chev}${chev}${chev}</div>
+          <div class="s-hotspot-lbl">${hs.title}</div>`;
+      } else if (hs.type === 'text') {
+        const st = hs.style || {};
+        const fs = Math.min(st.fontSize || 22, 18);
+        el.innerHTML = `<div class="s-text-preview"
+          style="font-size:${fs}px;color:${st.color||'#fff'};background:${st.background||'rgba(0,0,0,0.45)'};font-weight:${st.bold?700:400};font-style:${st.italic?'italic':'normal'}"
+          >${hs.content || '(text)'}</div>`;
+      } else {
+        el.innerHTML = `
+          <div class="s-hotspot-inner">${STUDIO_HS_ICONS[hs.type] || STUDIO_HS_ICONS.info}</div>
+          <div class="s-hotspot-lbl">${hs.title}</div>
+        `;
+      }
+
       el.addEventListener('click', e => { e.stopPropagation(); this.selectHotspot(hs.id); });
       overlay.appendChild(el);
     });
@@ -302,7 +378,7 @@ class Studio {
     document.getElementById('hs-count-badge').textContent = s.hotspots.length;
 
     const DOT_COLORS = {
-      info: '#0F6E56', video: '#1d4ed8', image: '#7c3aed', link: '#c2410c', nav: '#6b7280'
+      info: '#0F6E56', video: '#1d4ed8', image: '#7c3aed', link: '#c2410c', nav: '#6b7280', text: '#d97706'
     };
     s.hotspots.forEach(hs => {
       const item = document.createElement('div');
@@ -352,11 +428,37 @@ class Studio {
 
   getHsFormData(type) {
     const data = { type, title: readField('hs-title') };
-    if (type === 'info')  { data.content = readField('hs-content'); }
-    if (type === 'video') { data.videoUrl = readField('hs-videoUrl'); data.caption = readField('hs-caption'); }
+    if (type === 'info') {
+      data.content = readField('hs-content');
+    }
+    if (type === 'video') {
+      const localActive = document.querySelector('.vsrc-tab.active[data-src="local"]');
+      if (localActive) {
+        data.videoLocal = readField('hs-videoLocal');
+        data.videoUrl = '';
+      } else {
+        data.videoUrl = readField('hs-videoUrl');
+        data.videoLocal = '';
+      }
+      data.caption = readField('hs-caption');
+    }
     if (type === 'image') { data.imageUrl = readField('hs-imageUrl'); data.caption = readField('hs-caption'); }
     if (type === 'link')  { data.linkUrl = readField('hs-linkUrl'); data.linkDesc = readField('hs-linkDesc'); }
     if (type === 'nav')   { data.targetScene = readField('hs-targetScene'); }
+    if (type === 'text') {
+      const fontSize  = parseInt(document.getElementById('hs-fontSize')?.value) || 22;
+      const color     = document.getElementById('hs-text-color')?.value || '#ffffff';
+      const bgColor   = document.getElementById('hs-bg-color')?.value || '#000000';
+      const bgOpacity = parseInt(document.getElementById('hs-bg-opacity')?.value) ?? 45;
+      const bold      = document.getElementById('hs-bold')?.checked || false;
+      const italic    = document.getElementById('hs-italic')?.checked || false;
+      const r = parseInt(bgColor.slice(1,3), 16);
+      const g = parseInt(bgColor.slice(3,5), 16);
+      const b = parseInt(bgColor.slice(5,7), 16);
+      const background = `rgba(${r},${g},${b},${bgOpacity/100})`;
+      data.content = readField('hs-content');
+      data.style   = { fontSize, color, bold, italic, background, bgColor, bgOpacity };
+    }
     return data;
   }
 
@@ -622,6 +724,19 @@ class Studio {
 
     // Delete scene
     document.getElementById('btn-delete-scene').addEventListener('click', () => this.deleteScene());
+
+    // Video source tab switching (delegated on dynamic fields container)
+    document.getElementById('hs-dynamic-fields').addEventListener('click', e => {
+      const tab = e.target.closest('.vsrc-tab');
+      if (!tab) return;
+      const src = tab.dataset.src;
+      document.querySelectorAll('.vsrc-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const webDiv   = document.getElementById('hs-video-web');
+      const localDiv = document.getElementById('hs-video-local');
+      if (webDiv)   webDiv.style.display   = src === 'web'   ? '' : 'none';
+      if (localDiv) localDiv.style.display = src === 'local' ? '' : 'none';
+    });
 
     // Hotspot props: type pills
     document.getElementById('hs-type-pills').addEventListener('click', e => {
