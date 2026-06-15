@@ -704,6 +704,11 @@ class VirtualTour {
     document.getElementById('lb-close').addEventListener('click', () => this.closeLightbox());
     document.querySelector('.lb-overlay').addEventListener('click', () => this.closeLightbox());
 
+    // Mode posicionament
+    document.getElementById('pos-trigger').addEventListener('click', () => this.togglePosMode());
+    document.getElementById('pos-copy-btn').addEventListener('click', () => this.copyPosition());
+    document.getElementById('pos-close-btn').addEventListener('click', () => this.setPosMode(false));
+
     // Click outside panels
     document.getElementById('viewer-container').addEventListener('click', e => {
       if (!e.target.closest('#info-panel') && !e.target.closest('.hotspot')) this.hideInfoPanel();
@@ -756,7 +761,8 @@ class VirtualTour {
     if(e.key==='ArrowRight') {this.lon+=step; this.userInteractedAt=performance.now()}
     if(e.key==='ArrowUp')    {this.lat=Math.min(85,this.lat+step); this.userInteractedAt=performance.now()}
     if(e.key==='ArrowDown')  {this.lat=Math.max(-85,this.lat-step); this.userInteractedAt=performance.now()}
-    if(e.key==='Escape')     {this.hideInfoPanel(); this.closeSidebar(); this.closeLightbox()}
+    if(e.key==='Escape')     {this.hideInfoPanel(); this.closeSidebar(); this.closeLightbox(); this.setPosMode(false)}
+    if(e.key==='p'||e.key==='P') {this.togglePosMode()}
     if(e.key==='+'||e.key==='='){this.fov=Math.max(30,this.fov-5); this.camera.fov=this.fov; this.camera.updateProjectionMatrix()}
     if(e.key==='-')            {this.fov=Math.min(100,this.fov+5); this.camera.fov=this.fov; this.camera.updateProjectionMatrix()}
     const n=parseInt(e.key,10); if(n>=1&&n<=6) this.loadScene(n-1);
@@ -764,6 +770,37 @@ class VirtualTour {
 
   prevScene() { this.loadScene((this.currentIndex-1+this.scenes.length)%this.scenes.length); }
   nextScene() { this.loadScene((this.currentIndex+1)%this.scenes.length); }
+
+  /* ── Mode posicionament ── */
+  togglePosMode() { this.setPosMode(!this._posMode); }
+
+  setPosMode(on) {
+    this._posMode = on;
+    document.getElementById('pos-mode').classList.toggle('hidden', !on);
+    document.getElementById('pos-trigger').classList.toggle('active', on);
+  }
+
+  updatePosDisplay() {
+    if (!this._posMode) return;
+    const lon = ((this.lon % 360) + 360) % 360;
+    const displayLon = lon > 180 ? lon - 360 : lon;
+    document.getElementById('pos-lon').textContent = displayLon.toFixed(1);
+    document.getElementById('pos-lat').textContent = this.lat.toFixed(1);
+  }
+
+  copyPosition() {
+    const lon = ((this.lon % 360) + 360) % 360;
+    const displayLon = lon > 180 ? lon - 360 : lon;
+    const snippet =
+`{ id: 'hs-nou', lon: ${displayLon.toFixed(1)}, lat: ${this.lat.toFixed(1)}, type: 'info',
+  title: 'Títol del hotspot',
+  content: 'Descripció del hotspot.' },`;
+    navigator.clipboard.writeText(snippet).then(() => {
+      const toast = document.getElementById('pos-toast');
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2200);
+    });
+  }
 
   toggleSidebar() {
     const sb=document.getElementById('sidebar');
@@ -808,6 +845,7 @@ class VirtualTour {
       Math.sin(phi)*Math.sin(theta)
     );
     this.updateHotspots();
+    this.updatePosDisplay();
   }
 }
 

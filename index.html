@@ -146,6 +146,42 @@
       <span class="hint-sep">&bull;</span>
       <span>Moleta per fer zoom</span>
     </div>
+
+    <!-- ── Mode posicionament (tecla P per activar) ── -->
+    <div id="pos-mode" class="hidden">
+      <div class="pos-crosshair"></div>
+      <div class="pos-bar">
+        <span class="pos-label">MODE POSICIONAMENT</span>
+        <span class="pos-coords">
+          lon: <strong id="pos-lon">0</strong>
+          &nbsp;&nbsp;
+          lat: <strong id="pos-lat">0</strong>
+        </span>
+        <button id="pos-copy-btn" title="Copia les coordenades al portapapers">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copiar posició
+        </button>
+        <button id="pos-close-btn" title="Tancar mode posicionament">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Toast notificació -->
+    <div id="pos-toast">Coordenades copiades!</div>
+
+    <!-- Botó d'accés ràpid al mode posicionament -->
+    <button id="pos-trigger" title="Mode posicionament (tecla P)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 4"/>
+        <line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/>
+        <line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/>
+      </svg>
+    </button>
   </main>
 
   <!-- ══════════════════════════════════════════
