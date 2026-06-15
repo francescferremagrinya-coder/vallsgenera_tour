@@ -1046,7 +1046,7 @@ window.addEventListener('DOMContentLoaded', () => {
        Mai llegeix localStorage (els visitants no en tenen).           */
     const lpb = document.getElementById('local-photo-btn');
     if (lpb) lpb.style.display = 'none';
-    fetch('scenes.json')
+    fetch('scenes.json', { cache: 'no-cache' })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) applyScenes(d); })
       .catch(() => {})
@@ -1064,7 +1064,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const ready = hasLocal
       ? Promise.resolve()
-      : fetch('scenes.json').then(r => r.ok ? r.json() : null)
+      : fetch('scenes.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
           .then(d => { if (d) applyScenes(d); }).catch(() => {});
 
     ready.finally(() => {
