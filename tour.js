@@ -310,17 +310,6 @@ const HS_BADGES = {
   link:  'Enllaç'
 };
 
-/* ════════════════════════════════════════════════════════════
-   Detecta l'entorn d'execució
-   · IS_PUBLISHED = HTTPS extern → scenes.json + images/ del repo
-   · !IS_PUBLISHED = local (file://, localhost) → localStorage + IndexedDB
-   ════════════════════════════════════════════════════════════ */
-const IS_PUBLISHED = (
-  location.protocol === 'https:' &&
-  location.hostname !== 'localhost' &&
-  !location.hostname.startsWith('127.')
-);
-
 /* ── Biblioteca d'icones seleccionables per als hotspots ── */
 const HS_ICON_LIBRARY = {
   info:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.5" r=".8" fill="currentColor" stroke="none"/></svg>`,
@@ -602,8 +591,9 @@ class VirtualTour {
   }
 
   /* Resol i aplica la textura
-     Publicat  → ruta del repositori (images/)
-     Local     → IndexedDB (foto pujada al Studio) → ruta → placeholder */
+     1r IndexedDB (foto pujada al Studio en aquest navegador)
+     2n s.image (foto incrustada al scenes.json o ruta del repositori)
+     3r placeholder */
   resolveTexture(s) {
     const sceneId = s.id;
     const setTex = (tex) => {
@@ -621,13 +611,6 @@ class VirtualTour {
       );
     };
 
-    if (IS_PUBLISHED) {
-      if (s.image) loadUrl(s.image, false);
-      else setTex(this.createPlaceholder(s));
-      return;
-    }
-
-    // Local: IndexedDB → ruta → placeholder
     PhotoStore.get(sceneId).then(blob => {
       if (blob) loadUrl(URL.createObjectURL(blob), true);
       else if (s.image) loadUrl(s.image, false);
@@ -1039,75 +1022,66 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loading').classList.add('hidden');
   }
 
-  if (IS_PUBLISHED) {
-    /* ── Mode públic (GitHub Pages / qualsevol HTTPS extern) ──────────────
-       Sempre carrega des de scenes.json + fotos a images/.
-       Mai llegeix localStorage (els visitants no en tenen).           */
-    const lpb = document.getElementById('local-photo-btn');
-    if (lpb) lpb.style.display = 'none';
-    fetch('scenes.json', { cache: 'no-cache' })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) applyScenes(d); })
-      .catch(() => {})
-      .finally(() => startTour());
+  /* ── Càrrega unificada ───────────────────────────────────────────────
+     1) Si aquest navegador té edicions del Studio (localStorage) → s'usen,
+        així l'editor veu els seus canvis a l'instant al Tour.
+     2) Si no (un visitant normal) → es llegeix scenes.json publicat.
+     Les fotos: primer IndexedDB (edicions locals), si no la imatge
+     incrustada/ruta del scenes.json. Funciona igual en local i publicat. */
+  let hasLocal = false;
+  try {
+    const saved = localStorage.getItem('vg-tour-scenes');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length) { applyScenes(parsed); hasLocal = true; }
+    }
+  } catch(e) {}
 
-  } else {
-    /* ── Mode local (file://, localhost) – edició amb Studio ─────────────
-       localStorage té prioritat → fotos des d'IndexedDB.
-       Si localStorage és buit prova scenes.json (reutilitzable en local).  */
-    let hasLocal = false;
-    try {
-      const saved = localStorage.getItem('vg-tour-scenes');
-      if (saved) { applyScenes(JSON.parse(saved)); hasLocal = true; }
-    } catch(e) {}
+  const ready = hasLocal
+    ? Promise.resolve()
+    : fetch('scenes.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) applyScenes(d); }).catch(() => {});
 
-    const ready = hasLocal
-      ? Promise.resolve()
-      : fetch('scenes.json', { cache: 'no-cache' }).then(r => r.ok ? r.json() : null)
-          .then(d => { if (d) applyScenes(d); }).catch(() => {});
+  ready.finally(() => {
+    startTour();
 
-    ready.finally(() => {
-      startTour();
-
-      // Botó de càrrega de foto directa al Tour (només mode local)
-      const localPhotoBtn = document.getElementById('local-photo-btn');
-      if (localPhotoBtn) {
-        document.getElementById('local-photo-input').addEventListener('change', e => {
-          const file = e.target.files[0];
-          if (!file) return;
-          const s = window.tour.scenes[window.tour.currentIndex];
-          if (!s) return;
-          const blobUrl = URL.createObjectURL(file);
-          new THREE.TextureLoader().load(blobUrl, tex => {
-            tex.minFilter = THREE.LinearFilter;
-            tex.magFilter = THREE.LinearFilter;
-            window.tour.sphere.material.map = tex;
-            window.tour.sphere.material.needsUpdate = true;
-            URL.revokeObjectURL(blobUrl);
-          });
-          PhotoStore.put(s.id, file)
-            .then(() => {
-              const t = document.getElementById('pos-toast');
-              if (t) { t.textContent = 'Foto desada!'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
-            })
-            .catch(() => {});
-          e.target.value = '';
+    // Botó de càrrega de foto directa al Tour
+    const localPhotoBtn = document.getElementById('local-photo-btn');
+    if (localPhotoBtn) {
+      document.getElementById('local-photo-input').addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const s = window.tour.scenes[window.tour.currentIndex];
+        if (!s) return;
+        const blobUrl = URL.createObjectURL(file);
+        new THREE.TextureLoader().load(blobUrl, tex => {
+          tex.minFilter = THREE.LinearFilter;
+          tex.magFilter = THREE.LinearFilter;
+          window.tour.sphere.material.map = tex;
+          window.tour.sphere.material.needsUpdate = true;
+          URL.revokeObjectURL(blobUrl);
         });
-      }
-
-      // Sincronització en viu des del Studio (mateixes pestanyes locals)
-      window.addEventListener('storage', e => {
-        if (e.key !== 'vg-tour-scenes') return;
-        try {
-          applyScenes(JSON.parse(e.newValue));
-          const idx = Math.min(window.tour.currentIndex, SCENES.length - 1);
-          const dotsEl = document.getElementById('scene-dots');
-          dotsEl.innerHTML = '';
-          window.tour.buildDots();
-          window.tour.buildSidebarNav();
-          window.tour.loadScene(idx, false);
-        } catch(err) { location.reload(); }
+        PhotoStore.put(s.id, file)
+          .then(() => {
+            const t = document.getElementById('pos-toast');
+            if (t) { t.textContent = 'Foto desada!'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
+          })
+          .catch(() => {});
+        e.target.value = '';
       });
+    }
+
+    // Sincronització en viu des del Studio (mateix navegador, una altra pestanya)
+    window.addEventListener('storage', e => {
+      if (e.key !== 'vg-tour-scenes') return;
+      try {
+        applyScenes(JSON.parse(e.newValue));
+        const idx = Math.min(window.tour.currentIndex, SCENES.length - 1);
+        document.getElementById('scene-dots').innerHTML = '';
+        window.tour.buildDots();
+        window.tour.buildSidebarNav();
+        window.tour.loadScene(idx, false);
+      } catch(err) { location.reload(); }
     });
-  }
+  });
 });

@@ -3,6 +3,16 @@
    Vallsgenera Studio – Editor visual de tour
    ════════════════════════════════════════════════════════════ */
 
+/* Converteix un data URI (base64) en Blob per desar-lo a IndexedDB */
+function dataURItoBlob(dataURI) {
+  const [head, b64] = dataURI.split(',');
+  const mime = (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg';
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
 /* ── Icones SVG per hotspot (reutilitzades de tour.js) ── */
 const STUDIO_HS_ICONS = {
   info:  `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><circle cx="12" cy="16.5" r=".8" fill="white" stroke="none"/></svg>`,
@@ -211,14 +221,18 @@ class Studio {
     // 1) Treball en curs guardat localment (té prioritat)
     const saved = localStorage.getItem('vg-studio-scenes');
     if (saved) {
-      try { this.scenes = JSON.parse(saved); return; } catch(e) {}
+      try { this.scenes = JSON.parse(saved); await this.migrateEmbeddedPhotos(); return; } catch(e) {}
     }
     // 2) Primer cop en aquest origen: carrega el scenes.json publicat (si n'hi ha)
     try {
       const r = await fetch('scenes.json', { cache: 'no-store' });
       if (r.ok) {
         const data = await r.json();
-        if (Array.isArray(data) && data.length) { this.scenes = data; return; }
+        if (Array.isArray(data) && data.length) {
+          this.scenes = data;
+          await this.migrateEmbeddedPhotos();
+          return;
+        }
       }
     } catch(e) {}
     // 3) Si no, escenes per defecte de tour.js
@@ -229,18 +243,40 @@ class Studio {
     }
   }
 
+  /* Mou les fotos incrustades (data URIs del scenes.json) cap a IndexedDB
+     i les treu de memòria, perquè localStorage no es desbordi i el Tour
+     les pugui llegir d'IndexedDB. */
+  async migrateEmbeddedPhotos() {
+    for (const s of this.scenes) {
+      if (typeof s.image === 'string' && s.image.startsWith('data:')) {
+        try {
+          const existing = await PhotoStore.get(s.id);
+          if (!existing) await PhotoStore.put(s.id, dataURItoBlob(s.image));
+          s.image = undefined; // la foto ja viu a IndexedDB
+        } catch(e) {}
+      }
+    }
+  }
+
   saveData(silent = false) {
-    // Versió completa (amb fotos) per a l'Studio
-    try { localStorage.setItem('vg-studio-scenes', JSON.stringify(this.scenes)); } catch(e) {}
-    // Versió per al Tour: sense data URIs (les fotos ja estan a IndexedDB)
+    // Sense data URIs en memòria → localStorage no es desborda
     try {
-      const stripped = this.scenes.map(s => {
+      const json = JSON.stringify(this.scenes);
+      localStorage.setItem('vg-studio-scenes', json);
+      localStorage.setItem('vg-tour-scenes', json);
+      if (!silent) this.showToast('Guardat correctament');
+      return;
+    } catch(e) {}
+    // Per si de cas encara quedés alguna foto gran: versió sense imatges
+    try {
+      const stripped = JSON.stringify(this.scenes.map(s => {
         if (typeof s.image === 'string' && s.image.startsWith('data:')) {
           const { image, ...rest } = s; return rest;
         }
         return s;
-      });
-      localStorage.setItem('vg-tour-scenes', JSON.stringify(stripped));
+      }));
+      localStorage.setItem('vg-studio-scenes', stripped);
+      localStorage.setItem('vg-tour-scenes', stripped);
     } catch(e) {}
     if (!silent) this.showToast('Guardat correctament');
   }
