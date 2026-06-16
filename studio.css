@@ -549,5 +549,35 @@ input,textarea,select{font-family:inherit;font-size:13px}
   color: #fbbf24;
 }
 
+/* ── Toggle switch ── */
+.pp-toggle{
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  user-select:none;
+}
+.pp-toggle input{display:none}
+.pp-toggle-track{
+  width:36px;height:20px;border-radius:10px;flex-shrink:0;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  position:relative;transition:background var(--dur),border-color var(--dur);
+}
+.pp-toggle input:checked ~ .pp-toggle-track{
+  background:var(--accent);border-color:var(--accent);
+}
+.pp-toggle-thumb{
+  position:absolute;top:2px;left:2px;
+  width:14px;height:14px;border-radius:50%;
+  background:white;transition:transform var(--dur);
+  box-shadow:0 1px 3px rgba(0,0,0,.4);
+}
+.pp-toggle input:checked ~ .pp-toggle-track .pp-toggle-thumb{
+  transform:translateX(16px);
+}
+.pp-toggle-label{font-size:12px;color:var(--text-muted)}
+
+/* Scene list: hidden scenes appear dimmed */
+.scene-item.scene-hidden .scene-item-name::after{
+  content:' · oculta';font-size:10px;font-weight:400;opacity:.5;
+}
+
 /* ── Sections hidden ── */
 .hidden{display:none!important}

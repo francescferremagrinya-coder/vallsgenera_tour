@@ -423,16 +423,16 @@ class VirtualTour {
     setTimeout(() => document.getElementById('controls-hint')?.classList.add('hidden'), 5000);
   }
 
-  /* ── Reconstrueix els botons del menú lateral segons les escenes reals ── */
+  /* ── Reconstrueix els botons del menú lateral (escenes amb visible !== false) ── */
   buildSidebarNav() {
     const nav = document.querySelector('.dept-nav');
     if (!nav) return;
-    // Conserva l'etiqueta "Departaments", elimina els botons antics
     nav.querySelectorAll('.dept-btn').forEach(b => b.remove());
     const pin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
     this.scenes.forEach((s, i) => {
+      if (s.visible === false) return; // scenes marked hidden in Studio are omitted
       const btn = document.createElement('button');
-      btn.className = 'dept-btn' + (i === 0 ? ' active' : '');
+      btn.className = 'dept-btn' + (i === this.currentIndex ? ' active' : '');
       btn.dataset.index = i;
       btn.innerHTML =
         `<span class="dept-icon">${pin}</span>` +
@@ -1018,8 +1018,37 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   function startTour() {
+    // Clip the panorama to a small sphere BEFORE first render (hidden behind splash)
+    const vc = document.getElementById('viewer-container');
+    vc.classList.add('globe-mode');
+
     window.tour = new VirtualTour();
     document.getElementById('loading').classList.add('hidden');
+
+    // Show splash
+    const splash = document.getElementById('splash');
+    if (splash) {
+      splash.classList.remove('hidden');
+      splash.addEventListener('click', () => {
+        // Fade out splash
+        splash.classList.add('out');
+
+        // Globe expansion: force starting state inline, then animate to full-screen circle
+        vc.style.clipPath = 'circle(16vmin at 50% 50%)';
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          vc.style.transition = 'clip-path 1.5s cubic-bezier(0.15,0,0.05,1)';
+          vc.style.clipPath    = 'circle(150vmax at 50% 50%)';
+          vc.classList.remove('globe-mode');
+        }));
+
+        // Cleanup after animation completes
+        setTimeout(() => {
+          splash.classList.add('hidden');
+          vc.style.transition = '';
+          vc.style.clipPath    = '';
+        }, 1800);
+      }, { once: true });
+    }
   }
 
   /* ── Càrrega unificada ───────────────────────────────────────────────
