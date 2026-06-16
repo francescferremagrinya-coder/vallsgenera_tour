@@ -73,15 +73,28 @@ function dynamicFields(type, hs = {}, scenes = [], currentId = '') {
         <input type="text" id="hs-caption" placeholder="Descripció del vídeo" value="${hs.caption || ''}">
       </div>` + iconPickerHTML(hs.icon);
 
-    case 'image':
+    case 'image': {
+      const hasBlob = hs._hasImgBlob;
       return `<div class="pp-field">
-        <label>URL o ruta de la imatge</label>
-        <input type="text" id="hs-imageUrl" placeholder="images/foto.jpg  o  https://..." value="${hs.imageUrl || ''}">
+        <label>Imatge</label>
+        <div class="photo-drop" id="hs-img-drop">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <p id="hs-img-name">${hasBlob ? 'Imatge pujada ✓' : 'Arrossega o clica per pujar'}</p>
+          <input type="file" id="hs-img-file" accept=".jpg,.jpeg,.png,.webp,.gif">
+        </div>
+      </div>
+      <div class="pp-field">
+        <label>O URL externa <span class="label-hint">(opcional si has pujat)</span></label>
+        <input type="text" id="hs-imageUrl" placeholder="https://... o images/foto.jpg" value="${hasBlob ? '' : (hs.imageUrl || '')}">
       </div>
       <div class="pp-field">
         <label>Peu de foto <span class="label-hint">(opcional)</span></label>
         <input type="text" id="hs-caption" placeholder="Descripció de la imatge" value="${hs.caption || ''}">
       </div>` + iconPickerHTML(hs.icon);
+    }
 
     case 'link':
       return `<div class="pp-field">
@@ -186,8 +199,11 @@ class Studio {
     this.scenes = [];
     this.currentIdx = 0;
     this.selectedHsId = null;
+    this.selectedDecalId = null;
+    this.draggingCorner  = null; // 'tl'|'tr'|'br'|'bl' while dragging
     this.addMode = false;
-    this._photoUrls = {}; // sceneId → objectURL (preview)
+    this._photoUrls  = {}; // sceneId → objectURL (preview)
+    this._decalMeshes = {}; // decalId → THREE.Mesh
 
     // Three.js
     this.threeScene = null;
@@ -252,8 +268,27 @@ class Studio {
         try {
           const existing = await PhotoStore.get(s.id);
           if (!existing) await PhotoStore.put(s.id, dataURItoBlob(s.image));
-          s.image = undefined; // la foto ja viu a IndexedDB
+          s.image = undefined;
         } catch(e) {}
+      }
+      for (const hs of (s.hotspots || [])) {
+        if (hs.type === 'image' && typeof hs.imageUrl === 'string' && hs.imageUrl.startsWith('data:')) {
+          try {
+            const existing = await PhotoStore.get('hs-img-' + hs.id);
+            if (!existing) await PhotoStore.put('hs-img-' + hs.id, dataURItoBlob(hs.imageUrl));
+            hs.imageUrl = '';
+            hs._hasImgBlob = true;
+          } catch(e) {}
+        }
+      }
+      for (const d of (s.decals || [])) {
+        if (typeof d.imageUrl === 'string' && d.imageUrl.startsWith('data:')) {
+          try {
+            const existing = await PhotoStore.get('dcl-' + d.id);
+            if (!existing) await PhotoStore.put('dcl-' + d.id, dataURItoBlob(d.imageUrl));
+            d.imageUrl = '';
+          } catch(e) {}
+        }
       }
     }
   }
@@ -355,19 +390,219 @@ class Studio {
     this.sphere.material.needsUpdate = true;
   }
 
+  /* ── Decal helpers ── */
+  _lonLatToArr(lon, lat, r = 490) {
+    const phi = THREE.MathUtils.degToRad(90 - lat);
+    const th  = THREE.MathUtils.degToRad(lon);
+    return [r*Math.sin(phi)*Math.cos(th), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(th)];
+  }
+
+  _buildDecalGeo(decal) {
+    const c = decal.corners;
+    const tl = this._lonLatToArr(c.tl.lon, c.tl.lat);
+    const tr = this._lonLatToArr(c.tr.lon, c.tr.lat);
+    const br = this._lonLatToArr(c.br.lon, c.br.lat);
+    const bl = this._lonLatToArr(c.bl.lon, c.bl.lat);
+    const pos = new Float32Array([...tl,...bl,...tr,...tr,...bl,...br]);
+    const uvs = new Float32Array([0,1,0,0,1,1,1,1,0,0,1,0]);
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
+    return geo;
+  }
+
+  renderDecals() {
+    Object.values(this._decalMeshes).forEach(m => this.threeScene.remove(m));
+    this._decalMeshes = {};
+    (this.currentScene.decals || []).forEach(decal => {
+      const mat = new THREE.MeshBasicMaterial({
+        transparent: true, opacity: decal.opacity ?? 1,
+        side: THREE.DoubleSide, depthTest: false
+      });
+      const mesh = new THREE.Mesh(this._buildDecalGeo(decal), mat);
+      this.threeScene.add(mesh);
+      this._decalMeshes[decal.id] = mesh;
+      const setTex = src => new THREE.TextureLoader().load(src, tex => {
+        tex.minFilter = THREE.LinearFilter; mat.map = tex; mat.needsUpdate = true;
+      });
+      PhotoStore.get('dcl-' + decal.id).then(blob =>
+        blob ? setTex(URL.createObjectURL(blob)) : (decal.imageUrl && setTex(decal.imageUrl))
+      ).catch(() => decal.imageUrl && setTex(decal.imageUrl));
+    });
+  }
+
+  updateDecalMesh(decal) {
+    const mesh = this._decalMeshes[decal.id];
+    if (!mesh) return;
+    const c = decal.corners;
+    const tl = this._lonLatToArr(c.tl.lon, c.tl.lat);
+    const tr = this._lonLatToArr(c.tr.lon, c.tr.lat);
+    const br = this._lonLatToArr(c.br.lon, c.br.lat);
+    const bl = this._lonLatToArr(c.bl.lon, c.bl.lat);
+    const attr = mesh.geometry.getAttribute('position');
+    attr.array.set([...tl,...bl,...tr,...tr,...bl,...br]);
+    attr.needsUpdate = true;
+  }
+
+  renderDecalHandles() {
+    const overlay = document.getElementById('studio-decal-handles');
+    if (!overlay) return;
+    overlay.innerHTML = '';
+    if (!this.selectedDecalId) return;
+    const decal = (this.currentScene.decals || []).find(d => d.id === this.selectedDecalId);
+    if (!decal) return;
+    ['tl','tr','br','bl'].forEach(corner => {
+      const handle = document.createElement('div');
+      handle.className = 'dcl-handle';
+      handle.dataset.corner = corner;
+      handle.addEventListener('pointerdown', e => {
+        e.stopPropagation(); e.preventDefault();
+        handle.setPointerCapture(e.pointerId);
+        this.draggingCorner = corner;
+      });
+      handle.addEventListener('pointermove', e => {
+        if (this.draggingCorner !== corner) return;
+        const ll = this._screenToLonLat(e.clientX, e.clientY);
+        const d = (this.currentScene.decals || []).find(d => d.id === this.selectedDecalId);
+        if (d) { d.corners[corner] = ll; this.updateDecalMesh(d); }
+      });
+      handle.addEventListener('pointerup', () => {
+        if (this.draggingCorner === corner) { this.draggingCorner = null; this.saveData(true); }
+      });
+      overlay.appendChild(handle);
+    });
+  }
+
+  updateDecalHandlePositions() {
+    const overlay = document.getElementById('studio-decal-handles');
+    if (!overlay || !this.selectedDecalId) return;
+    const decal = (this.currentScene.decals || []).find(d => d.id === this.selectedDecalId);
+    if (!decal) return;
+    const container = document.getElementById('studio-viewer');
+    const W = container.clientWidth, H = container.clientHeight;
+    const camDir = new THREE.Vector3();
+    this.camera.getWorldDirection(camDir);
+    overlay.querySelectorAll('.dcl-handle').forEach(handle => {
+      const c = decal.corners[handle.dataset.corner];
+      if (!c) return;
+      const phi = THREE.MathUtils.degToRad(90 - c.lat);
+      const th  = THREE.MathUtils.degToRad(c.lon);
+      const dir = new THREE.Vector3(Math.sin(phi)*Math.cos(th), Math.cos(phi), Math.sin(phi)*Math.sin(th));
+      if (camDir.dot(dir) < 0.05) { handle.style.display = 'none'; return; }
+      const pos = dir.clone().multiplyScalar(490);
+      pos.project(this.camera);
+      handle.style.display = 'block';
+      handle.style.left = `${(pos.x+1)/2*W}px`;
+      handle.style.top  = `${-(pos.y-1)/2*H}px`;
+    });
+  }
+
+  _screenToLonLat(clientX, clientY) {
+    const container = document.getElementById('studio-viewer');
+    const rect = container.getBoundingClientRect();
+    const ndcX = ((clientX - rect.left) / rect.width)  * 2 - 1;
+    const ndcY = -((clientY - rect.top)  / rect.height) * 2 + 1;
+    const vec = new THREE.Vector3(ndcX, ndcY, 0.5);
+    vec.unproject(this.camera);
+    vec.sub(this.camera.position).normalize();
+    const lat = Math.round(THREE.MathUtils.radToDeg(Math.asin(Math.max(-1,Math.min(1,vec.y)))) * 10) / 10;
+    const lon = Math.round(THREE.MathUtils.radToDeg(Math.atan2(vec.z, vec.x)) * 10) / 10;
+    return { lon, lat };
+  }
+
+  renderDecalMiniList() {
+    const list = document.getElementById('decal-mini-list');
+    if (!list) return;
+    list.innerHTML = '';
+    (this.currentScene.decals || []).forEach((d, i) => {
+      const item = document.createElement('div');
+      item.className = 'hs-mini-item' + (this.selectedDecalId === d.id ? ' selected' : '');
+      item.innerHTML = `
+        <span class="hs-mini-dot" style="background:#f59e0b"></span>
+        <span class="hs-mini-name">Imatge ${i+1}</span>
+        <span class="hs-mini-type">overlay</span>`;
+      item.addEventListener('click', () => this.selectDecal(d.id));
+      list.appendChild(item);
+    });
+  }
+
+  selectDecal(id) {
+    this.selectedDecalId = id;
+    this.selectedHsId = null;
+    document.getElementById('scene-props-section').classList.add('hidden');
+    document.getElementById('hs-props-section').classList.add('hidden');
+    document.getElementById('decal-props-section').classList.remove('hidden');
+    const decal = (this.currentScene.decals || []).find(d => d.id === id);
+    if (!decal) return;
+    const op = Math.round((decal.opacity ?? 1) * 100);
+    const opEl = document.getElementById('decal-opacity');
+    const opVEl = document.getElementById('decal-opacity-val');
+    if (opEl) opEl.value = op;
+    if (opVEl) opVEl.textContent = op + '%';
+    this.renderDecalHandles();
+    this.renderDecalMiniList();
+  }
+
+  async addDecal(file) {
+    if (!file) return;
+    // Place at current camera look direction
+    const center = { lon: this.lon, lat: this.lat };
+    const W = 10, H = 7;
+    const id = 'dcl-' + Date.now().toString(36);
+    const decal = {
+      id,
+      corners: {
+        tl: { lon: center.lon - W, lat: center.lat + H },
+        tr: { lon: center.lon + W, lat: center.lat + H },
+        br: { lon: center.lon + W, lat: center.lat - H },
+        bl: { lon: center.lon - W, lat: center.lat - H }
+      },
+      opacity: 1.0,
+      imageUrl: ''
+    };
+    if (!this.currentScene.decals) this.currentScene.decals = [];
+    this.currentScene.decals.push(decal);
+    await PhotoStore.put('dcl-' + id, file).catch(() => {});
+    this.renderDecals();
+    this.renderDecalMiniList();
+    this.selectDecal(id);
+    this.saveData(true);
+    this.showToast('Imatge afegida — arrossega les cantonades grogues per ajustar');
+  }
+
+  deleteSelectedDecal() {
+    if (!this.selectedDecalId) return;
+    const mesh = this._decalMeshes[this.selectedDecalId];
+    if (mesh) { this.threeScene.remove(mesh); delete this._decalMeshes[this.selectedDecalId]; }
+    PhotoStore.delete('dcl-' + this.selectedDecalId).catch(() => {});
+    this.currentScene.decals = (this.currentScene.decals || []).filter(d => d.id !== this.selectedDecalId);
+    this.selectedDecalId = null;
+    const overlay = document.getElementById('studio-decal-handles');
+    if (overlay) overlay.innerHTML = '';
+    this.renderDecalMiniList();
+    this.renderPropsPanel();
+    this.saveData();
+    this.showToast('Imatge eliminada');
+  }
+
   /* ── Switch scene ── */
   switchScene(idx, animate = true) {
     this.currentIdx = idx;
     const s = this.currentScene;
     this.selectedHsId = null;
+    this.selectedDecalId = null;
 
     // Reset camera
     this.lon = 0; this.lat = 0; this.velLon = 0; this.velLat = 0;
 
     this.loadTexture(s);
     this.renderHotspots();
+    this.renderDecals();
     this.renderSceneList();
     this.renderPropsPanel();
+    this.renderDecalMiniList();
+    const dh = document.getElementById('studio-decal-handles');
+    if (dh) dh.innerHTML = '';
 
     document.getElementById('status-scene').textContent = s.name;
     document.getElementById('status-hs-count').textContent =
@@ -487,9 +722,11 @@ class Studio {
 
     // Hotspot mini list
     this.renderHsMiniList();
+    this.renderDecalMiniList();
 
     document.getElementById('scene-props-section').classList.remove('hidden');
     document.getElementById('hs-props-section').classList.add('hidden');
+    document.getElementById('decal-props-section').classList.add('hidden');
   }
 
   renderHsMiniList() {
@@ -563,7 +800,13 @@ class Studio {
       }
       data.caption = readField('hs-caption');
     }
-    if (type === 'image') { data.imageUrl = readField('hs-imageUrl'); data.caption = readField('hs-caption'); }
+    if (type === 'image') {
+      const existing = this.currentScene.hotspots.find(h => h.id === this.selectedHsId);
+      const urlVal = readField('hs-imageUrl');
+      data.imageUrl = urlVal || (existing?._hasImgBlob ? '' : (existing?.imageUrl || ''));
+      data._hasImgBlob = existing?._hasImgBlob || false;
+      data.caption = readField('hs-caption');
+    }
     if (type === 'link')  { data.linkUrl = readField('hs-linkUrl'); data.linkDesc = readField('hs-linkDesc'); }
     if (type === 'nav')   { data.targetScene = readField('hs-targetScene'); }
     if (type === 'text') {
@@ -825,8 +1068,37 @@ class Studio {
         const dataUrl = await this.blobToEmbeddedDataURL(blob);
         if (dataUrl) { copy.image = dataUrl; embedded++; }
       }
-      // Si no hi ha foto a IndexedDB, es manté el que hi hagi a copy.image
-      // (per exemple una ruta o un data URI ja existent).
+      // Embed hotspot images
+      if (copy.hotspots) {
+        copy.hotspots = await Promise.all(copy.hotspots.map(async hs => {
+          if (hs.type !== 'image' || !hs._hasImgBlob) return hs;
+          let hsBlob = null;
+          try { hsBlob = await PhotoStore.get('hs-img-' + hs.id); } catch(e) {}
+          if (!hsBlob) return hs;
+          const dataUrl = await new Promise(res => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = () => res(null);
+            fr.readAsDataURL(hsBlob);
+          });
+          return dataUrl ? { ...hs, imageUrl: dataUrl, _hasImgBlob: undefined } : hs;
+        }));
+      }
+      // Embed decal images
+      if (copy.decals) {
+        copy.decals = await Promise.all(copy.decals.map(async d => {
+          let dBlob = null;
+          try { dBlob = await PhotoStore.get('dcl-' + d.id); } catch(e) {}
+          if (!dBlob) return d;
+          const dataUrl = await new Promise(res => {
+            const fr = new FileReader();
+            fr.onload = () => res(fr.result);
+            fr.onerror = () => res(null);
+            fr.readAsDataURL(dBlob);
+          });
+          return dataUrl ? { ...d, imageUrl: dataUrl } : d;
+        }));
+      }
       exportData.push(copy);
     }
 
@@ -1047,6 +1319,71 @@ class Studio {
       if (this.selectedHsId) this.persistHotspotEdits();
     });
 
+    // Hotspot image upload (inside dynamic fields)
+    dynFields.addEventListener('change', e => {
+      const fileInput = e.target.closest('#hs-img-file');
+      if (!fileInput || !fileInput.files[0]) return;
+      const file = fileInput.files[0];
+      const hs = this.currentScene.hotspots.find(h => h.id === this.selectedHsId);
+      if (!hs) return;
+      PhotoStore.put('hs-img-' + hs.id, file).then(() => {
+        hs._hasImgBlob = true;
+        hs.imageUrl = '';
+        document.getElementById('hs-img-name').textContent = 'Imatge pujada ✓';
+        this.saveData(true);
+        this.showToast('Imatge del hotspot desada');
+      }).catch(() => this.showToast('Error al desar la imatge'));
+    });
+
+    // Decal: add new
+    document.getElementById('decal-img-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) { this.addDecal(file); e.target.value = ''; }
+    });
+
+    // Decal: replace image
+    document.getElementById('decal-replace-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file || !this.selectedDecalId) return;
+      PhotoStore.put('dcl-' + this.selectedDecalId, file).then(() => {
+        const mesh = this._decalMeshes[this.selectedDecalId];
+        if (mesh) {
+          const url = URL.createObjectURL(file);
+          new THREE.TextureLoader().load(url, tex => {
+            tex.minFilter = THREE.LinearFilter;
+            mesh.material.map = tex; mesh.material.needsUpdate = true;
+          });
+        }
+        document.getElementById('decal-img-name').textContent = 'Imatge actualitzada ✓';
+        e.target.value = '';
+        this.saveData(true);
+        this.showToast('Imatge substituïda');
+      }).catch(() => this.showToast('Error al substituir la imatge'));
+    });
+
+    // Decal: opacity slider
+    document.getElementById('decal-opacity').addEventListener('input', e => {
+      const val = parseInt(e.target.value) / 100;
+      const decal = (this.currentScene.decals || []).find(d => d.id === this.selectedDecalId);
+      if (!decal) return;
+      decal.opacity = val;
+      const mesh = this._decalMeshes[this.selectedDecalId];
+      if (mesh) { mesh.material.opacity = val; mesh.material.needsUpdate = true; }
+      this.saveData(true);
+    });
+
+    // Decal: back button
+    document.getElementById('btn-decal-back').addEventListener('click', () => {
+      this.selectedDecalId = null;
+      const dh = document.getElementById('studio-decal-handles');
+      if (dh) dh.innerHTML = '';
+      this.renderDecalMiniList();
+      this.renderPropsPanel();
+    });
+
+    // Decal: delete button
+    document.getElementById('btn-delete-decal').addEventListener('click', () => this.deleteSelectedDecal());
+
     // Hotspot props: save / delete / back
     document.getElementById('btn-save-hs').addEventListener('click', () => this.saveSelectedHotspot());
     document.getElementById('btn-delete-hs').addEventListener('click', () => this.deleteSelectedHotspot());
@@ -1101,6 +1438,7 @@ class Studio {
       `lon: ${displayLon.toFixed(1)} · lat: ${this.lat.toFixed(1)}`;
 
     this.updateHotspotPositions();
+    this.updateDecalHandlePositions();
     this.renderer.render(this.threeScene, this.camera);
   }
 }

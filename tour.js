@@ -408,6 +408,7 @@ class VirtualTour {
     this.velLon = 0; this.velLat  = 0;
     this.userInteractedAt = 0;
     this.lastPinchDist = null;
+    this._decalMeshes  = []; // Three.js meshes for image overlays
 
     this.init();
   }
@@ -571,6 +572,7 @@ class VirtualTour {
       // UI immediata (hotspots, càmera) – independent de la foto
       this.lon = 0; this.lat = 0; this.velLon = 0; this.velLat = 0;
       this.buildHotspots(s);
+      this.buildDecals(s);
       this.hideInfoPanel();
       this.closeLightbox();
 
@@ -779,10 +781,55 @@ class VirtualTour {
     this._lbOpen(hs.title, 'image');
     const body = document.getElementById('lb-body');
     body.className = 'lb-image';
-    const img = document.createElement('img');
-    img.src = hs.imageUrl; img.alt = hs.title;
-    body.appendChild(img);
-    if (hs.caption) document.getElementById('lb-caption').textContent = hs.caption;
+    const show = src => {
+      const img = document.createElement('img');
+      img.src = src; img.alt = hs.title;
+      body.appendChild(img);
+      if (hs.caption) document.getElementById('lb-caption').textContent = hs.caption;
+    };
+    // Check IndexedDB first (image uploaded in Studio), fall back to URL
+    PhotoStore.get('hs-img-' + hs.id)
+      .then(blob => blob ? show(URL.createObjectURL(blob)) : show(hs.imageUrl || ''))
+      .catch(() => show(hs.imageUrl || ''));
+  }
+
+  /* ── Image overlays (decals) ── */
+  buildDecals(scene) {
+    this._decalMeshes.forEach(m => this.threeScene.remove(m));
+    this._decalMeshes = [];
+    const r = 490;
+    const toV = (lon, lat) => {
+      const phi = THREE.MathUtils.degToRad(90 - lat);
+      const th  = THREE.MathUtils.degToRad(lon);
+      return [r*Math.sin(phi)*Math.cos(th), r*Math.cos(phi), r*Math.sin(phi)*Math.sin(th)];
+    };
+    (scene.decals || []).forEach(decal => {
+      const c = decal.corners;
+      if (!c) return;
+      const tl = toV(c.tl.lon, c.tl.lat);
+      const tr = toV(c.tr.lon, c.tr.lat);
+      const br = toV(c.br.lon, c.br.lat);
+      const bl = toV(c.bl.lon, c.bl.lat);
+      const positions = new Float32Array([...tl,...bl,...tr,...tr,...bl,...br]);
+      const uvs = new Float32Array([0,1,0,0,1,1,1,1,0,0,1,0]);
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      geo.setAttribute('uv',       new THREE.BufferAttribute(uvs, 2));
+      const mat = new THREE.MeshBasicMaterial({
+        transparent: true, opacity: decal.opacity ?? 1,
+        side: THREE.DoubleSide, depthTest: false
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+      this.threeScene.add(mesh);
+      this._decalMeshes.push(mesh);
+      const loadTex = src => new THREE.TextureLoader().load(src, tex => {
+        tex.minFilter = THREE.LinearFilter;
+        mat.map = tex; mat.needsUpdate = true;
+      });
+      PhotoStore.get('dcl-' + decal.id)
+        .then(blob => blob ? loadTex(URL.createObjectURL(blob)) : (decal.imageUrl && loadTex(decal.imageUrl)))
+        .catch(() => decal.imageUrl && loadTex(decal.imageUrl));
+    });
   }
 
   openLightboxLink(hs) {

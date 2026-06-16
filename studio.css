@@ -581,3 +581,58 @@ input,textarea,select{font-family:inherit;font-size:13px}
 
 /* ── Sections hidden ── */
 .hidden{display:none!important}
+
+/* ── Decal corner handles ── */
+#studio-decal-handles {
+  position: absolute; inset: 0;
+  pointer-events: none; z-index: 15;
+}
+.dcl-handle {
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  background: #f59e0b;
+  border: 1.5px solid #fff;
+  transform: translate(-50%, -50%);
+  pointer-events: all;
+  cursor: grab;
+  box-shadow: 0 1px 4px rgba(0,0,0,.5);
+  transition: transform .1s;
+}
+.dcl-handle:active { cursor: grabbing; transform: translate(-50%,-50%) scale(1.25); }
+
+/* ── Decal mini-list section in scene props ── */
+.pp-decal-list {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+  margin-top: 4px;
+}
+.phl-add-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  border-radius: var(--radius);
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--dur), color var(--dur);
+}
+.phl-add-btn:hover { background: rgba(255,255,255,.13); color: white; }
+.decal-hint {
+  font-size: 10.5px; color: var(--text-muted);
+  line-height: 1.45; margin-top: 6px;
+}
+
+/* ── Decal props panel ── */
+.decal-corner-hint {
+  font-size: 11px; color: var(--text-muted); line-height: 1.5;
+}
+.dcl-handle-sample {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: #f59e0b;
+  border: 1px solid #fff;
+  vertical-align: middle;
+  margin: 0 2px;
+}
