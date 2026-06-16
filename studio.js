@@ -380,7 +380,8 @@ class Studio {
     list.innerHTML = '';
     this.scenes.forEach((s, i) => {
       const item = document.createElement('div');
-      item.className = 'scene-item' + (i === this.currentIdx ? ' active' : '');
+      const isHidden = s.visible === false;
+      item.className = 'scene-item' + (i === this.currentIdx ? ' active' : '') + (isHidden ? ' scene-hidden' : '');
       item.innerHTML = `
         <div class="scene-color-dot" style="background:${s.color}">
           ${s.image || this._photoUrls[s.id] ? '📷' : ''}
@@ -473,6 +474,10 @@ class Studio {
     const imgIsEmbedded = typeof s.image === 'string' && s.image.startsWith('data:');
     // No aboquem el data URI (enorme) al camp de ruta
     document.getElementById('prop-image-path').value = imgIsEmbedded ? '' : (s.image || '');
+
+    // Visibility toggle
+    const visEl = document.getElementById('prop-visible');
+    if (visEl) visEl.checked = (s.visible !== false);
     document.getElementById('photo-name').textContent =
       this._photoUrls[s.id]
         ? (s._photoFilename || 'Foto carregada')
@@ -730,6 +735,9 @@ class Studio {
     const pathVal = document.getElementById('prop-image-path').value.trim();
     if (pathVal) s.image = pathVal;
     else if (!(typeof s.image === 'string' && s.image.startsWith('data:'))) s.image = undefined;
+    // Visibility
+    const visEl = document.getElementById('prop-visible');
+    if (visEl) s.visible = visEl.checked;
     this.renderSceneList();
     document.getElementById('status-scene').textContent = s.name;
   }
@@ -951,6 +959,13 @@ class Studio {
       const s = this.currentScene;
       if (v) s.image = v;
       else if (!(typeof s.image === 'string' && s.image.startsWith('data:'))) s.image = undefined;
+    });
+
+    // Visibility toggle: live save
+    document.getElementById('prop-visible').addEventListener('change', e => {
+      this.currentScene.visible = e.target.checked;
+      this.renderSceneList();
+      this.saveData(true);
     });
 
     // Photo upload
