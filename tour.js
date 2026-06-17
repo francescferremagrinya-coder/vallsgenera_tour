@@ -425,6 +425,7 @@ class VirtualTour {
     this.setupEvents();
     this.loadScene(0, false);
     this.animate();
+    this.loadLogo();
     setTimeout(() => document.getElementById('controls-hint')?.classList.add('hidden'), 5000);
   }
 
@@ -938,8 +939,8 @@ class VirtualTour {
 
     document.addEventListener('fullscreenchange', () => {
       const inFS = !!document.fullscreenElement;
-      document.getElementById('fs-icon-expand').classList.toggle('hidden', inFS);
-      document.getElementById('fs-icon-compress').classList.toggle('hidden', !inFS);
+      document.getElementById('fs-icon-expand').style.display  = inFS ? 'none' : '';
+      document.getElementById('fs-icon-compress').style.display = inFS ? '' : 'none';
     });
 
     // (Els botons .dept-btn reben el seu handler a buildSidebarNav)
@@ -948,10 +949,10 @@ class VirtualTour {
     document.getElementById('lb-close').addEventListener('click', () => this.closeLightbox());
     document.querySelector('.lb-overlay').addEventListener('click', () => this.closeLightbox());
 
-    // Mode posicionament
-    document.getElementById('pos-trigger').addEventListener('click', () => this.togglePosMode());
-    document.getElementById('pos-copy-btn').addEventListener('click', () => this.copyPosition());
-    document.getElementById('pos-close-btn').addEventListener('click', () => this.setPosMode(false));
+    // Map modal
+    document.getElementById('btn-map').addEventListener('click', () => this.openMapModal());
+    document.getElementById('map-close').addEventListener('click', () => this.closeMapModal());
+    document.querySelector('.map-overlay').addEventListener('click', () => this.closeMapModal());
 
     // Click outside panels
     document.getElementById('viewer-container').addEventListener('click', e => {
@@ -1009,8 +1010,7 @@ class VirtualTour {
     if(e.key==='ArrowRight') {this.lon+=step; this.userInteractedAt=performance.now()}
     if(e.key==='ArrowUp')    {this.lat=Math.min(85,this.lat+step); this.userInteractedAt=performance.now()}
     if(e.key==='ArrowDown')  {this.lat=Math.max(-85,this.lat-step); this.userInteractedAt=performance.now()}
-    if(e.key==='Escape')     {this.hideInfoPanel(); this.closeSidebar(); this.closeLightbox(); this.setPosMode(false)}
-    if(e.key==='p'||e.key==='P') {this.togglePosMode()}
+    if(e.key==='Escape')     {this.hideInfoPanel(); this.closeSidebar(); this.closeLightbox(); this.closeMapModal();}
     if(e.key==='+'||e.key==='='){this.fov=Math.max(30,this.fov-5); this.camera.fov=this.fov; this.camera.updateProjectionMatrix()}
     if(e.key==='-')            {this.fov=Math.min(100,this.fov+5); this.camera.fov=this.fov; this.camera.updateProjectionMatrix()}
     const n=parseInt(e.key,10); if(n>=1&&n<=6) this.loadScene(n-1);
@@ -1019,35 +1019,26 @@ class VirtualTour {
   prevScene() { this.loadScene((this.currentIndex-1+this.scenes.length)%this.scenes.length); }
   nextScene() { this.loadScene((this.currentIndex+1)%this.scenes.length); }
 
-  /* ── Mode posicionament ── */
-  togglePosMode() { this.setPosMode(!this._posMode); }
-
-  setPosMode(on) {
-    this._posMode = on;
-    document.getElementById('pos-mode').classList.toggle('hidden', !on);
-    document.getElementById('pos-trigger').classList.toggle('active', on);
+  /* ── Map modal ── */
+  openMapModal() {
+    this.closeSidebar();
+    const m = document.getElementById('map-modal');
+    m.classList.add('visible');
+    m.setAttribute('aria-hidden', 'false');
+  }
+  closeMapModal() {
+    const m = document.getElementById('map-modal');
+    m.classList.remove('visible');
+    m.setAttribute('aria-hidden', 'true');
   }
 
-  updatePosDisplay() {
-    if (!this._posMode) return;
-    const lon = ((this.lon % 360) + 360) % 360;
-    const displayLon = lon > 180 ? lon - 360 : lon;
-    document.getElementById('pos-lon').textContent = displayLon.toFixed(1);
-    document.getElementById('pos-lat').textContent = this.lat.toFixed(1);
-  }
-
-  copyPosition() {
-    const lon = ((this.lon % 360) + 360) % 360;
-    const displayLon = lon > 180 ? lon - 360 : lon;
-    const snippet =
-`{ id: 'hs-nou', lon: ${displayLon.toFixed(1)}, lat: ${this.lat.toFixed(1)}, type: 'info',
-  title: 'Títol del hotspot',
-  content: 'Descripció del hotspot.' },`;
-    navigator.clipboard.writeText(snippet).then(() => {
-      const toast = document.getElementById('pos-toast');
-      toast.classList.add('show');
-      setTimeout(() => toast.classList.remove('show'), 2200);
-    });
+  /* ── Logo overlay ── */
+  loadLogo() {
+    const src = localStorage.getItem('vg-logo');
+    const el = document.getElementById('logo-overlay');
+    if (!el) return;
+    if (src) { el.src = src; el.classList.add('visible'); }
+    else { el.classList.remove('visible'); }
   }
 
   toggleSidebar() {
@@ -1062,10 +1053,9 @@ class VirtualTour {
   }
   toggleAudio() {
     this._audioMuted = !this._audioMuted;
-    document.getElementById('audio-icon-on').classList.toggle('hidden', this._audioMuted);
-    document.getElementById('audio-icon-off').classList.toggle('hidden', !this._audioMuted);
+    document.getElementById('audio-icon-on').style.display  = this._audioMuted ? 'none' : '';
+    document.getElementById('audio-icon-off').style.display = this._audioMuted ? '' : 'none';
     document.getElementById('btn-audio').classList.toggle('tc-active', this._audioMuted);
-    // Mute/unmute any audio elements in the page
     document.querySelectorAll('audio,video').forEach(m => { m.muted = this._audioMuted; });
   }
 
@@ -1082,9 +1072,8 @@ class VirtualTour {
     } else { this._vrFallback(); }
   }
   _vrFallback() {
-    // Fallback: just go fullscreen + show hint
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
-    const t = document.getElementById('pos-toast');
+    const t = document.getElementById('vg-toast');
     if (t) { t.textContent = 'VR: rota el dispositiu per mirar al voltant'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
   }
 
@@ -1237,7 +1226,6 @@ class VirtualTour {
       Math.sin(phi)*Math.sin(theta)
     );
     this.updateHotspots();
-    this.updatePosDisplay();
   }
 }
 
@@ -1296,32 +1284,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   ready.finally(() => {
     startTour();
-
-    // Botó de càrrega de foto directa al Tour
-    const localPhotoBtn = document.getElementById('local-photo-btn');
-    if (localPhotoBtn) {
-      document.getElementById('local-photo-input').addEventListener('change', e => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const s = window.tour.scenes[window.tour.currentIndex];
-        if (!s) return;
-        const blobUrl = URL.createObjectURL(file);
-        new THREE.TextureLoader().load(blobUrl, tex => {
-          tex.minFilter = THREE.LinearFilter;
-          tex.magFilter = THREE.LinearFilter;
-          window.tour.sphere.material.map = tex;
-          window.tour.sphere.material.needsUpdate = true;
-          URL.revokeObjectURL(blobUrl);
-        });
-        PhotoStore.put(s.id, file)
-          .then(() => {
-            const t = document.getElementById('pos-toast');
-            if (t) { t.textContent = 'Foto desada!'; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200); }
-          })
-          .catch(() => {});
-        e.target.value = '';
-      });
-    }
 
     // Sincronització en viu des del Studio (mateix navegador, una altra pestanya)
     window.addEventListener('storage', e => {

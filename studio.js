@@ -1547,6 +1547,49 @@ class Studio {
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(c.clientWidth, c.clientHeight);
     });
+
+    // Logo (mosca)
+    this._initLogo();
+    document.getElementById('logo-input').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const src = ev.target.result;
+        localStorage.setItem('vg-logo', src);
+        this._applyLogoPreview(src);
+        this.showToast('Logo desat — visible al Tour');
+      };
+      reader.readAsDataURL(file);
+      e.target.value = '';
+    });
+    document.getElementById('btn-remove-logo').addEventListener('click', () => {
+      localStorage.removeItem('vg-logo');
+      this._applyLogoPreview(null);
+      this.showToast('Logo eliminat');
+    });
+  }
+
+  _initLogo() {
+    const src = localStorage.getItem('vg-logo');
+    this._applyLogoPreview(src);
+  }
+
+  _applyLogoPreview(src) {
+    const preview  = document.getElementById('logo-preview');
+    const placeholder = document.getElementById('logo-placeholder');
+    const removeBtn   = document.getElementById('btn-remove-logo');
+    if (src) {
+      preview.src = src;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      removeBtn.style.display = 'block';
+    } else {
+      preview.src = '';
+      preview.style.display = 'none';
+      placeholder.style.display = '';
+      removeBtn.style.display = 'none';
+    }
   }
 
   pinchDist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
