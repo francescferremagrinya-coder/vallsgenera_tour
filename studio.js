@@ -1,6 +1,6 @@
 'use strict';
 /* ════════════════════════════════════════════════════════════
-   Vallsgenera Studio – Editor visual de tour
+   Studio 360° – Editor visual de tour
    ════════════════════════════════════════════════════════════ */
 
 /* Converteix un data URI (base64) en Blob per desar-lo a IndexedDB */

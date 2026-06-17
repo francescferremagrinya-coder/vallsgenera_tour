@@ -26,232 +26,42 @@
    ════════════════════════════════════════════════════════════ */
 
 const SCENES = [
-  /* ── 1. Feina i Ocupació ──────────────────────────────── */
+  /* ── 1. Primera escena ────────────────────────────────── */
   {
-    id: 'feina-ocupacio',
-    name: 'Feina i Ocupació',
+    id: 'escena-1',
+    name: 'Escena 1',
     color: '#0F6E56', shade: '#0a5040',
-    // image: 'images/feina-ocupacio.jpg',
+    // image: 'images/escena-1.jpg',
     hotspots: [
       {
-        id: 'fo-1', lon: 30, lat: 8, type: 'info',
-        title: 'Borsa de Treball',
-        content: 'Accedeix a les ofertes de feina actualitzades diàriament. Servei personalitzat d\'orientació laboral per a persones en recerca de feina a la comarca de l\'Alt Camp.'
+        id: 'e1-1', lon: 30, lat: 8, type: 'info',
+        title: 'Benvinguts',
+        content: 'Benvinguts al tour virtual! Edita aquest hotspot des del Studio per personalitzar el contingut.'
       },
       {
-        id: 'fo-2', lon: -55, lat: 10, type: 'video',
-        title: 'Presentació del servei',
-        // Substitueix per l'embed real de YouTube: https://www.youtube.com/embed/ID_DEL_VIDEO
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'Vídeo de presentació dels serveis de Feina i Ocupació de Vallsgenera'
-      },
-      {
-        id: 'fo-3', lon: -130, lat: 2, type: 'image',
-        title: 'L\'equip de Feina i Ocupació',
-        // Substitueix per la foto real: images/equip-feina.jpg
-        imageUrl: 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&q=80',
-        caption: 'L\'equip de professionals de Feina i Ocupació de Vallsgenera'
-      },
-      {
-        id: 'fo-4', lon: 100, lat: 5, type: 'link',
-        title: 'Web de Vallsgenera',
-        linkUrl: 'https://www.vallsgenera.cat',
-        linkDesc: 'Visita el web oficial de Vallsgenera per a més informació sobre tots els serveis disponibles.'
-      },
-      {
-        id: 'fo-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Anar a Formació',
-        targetScene: 'formacio'
+        id: 'e1-nav', lon: 175, lat: -10, type: 'nav',
+        title: 'Anar a Escena 2',
+        targetScene: 'escena-2'
       }
     ]
   },
 
-  /* ── 2. Formació ──────────────────────────────────────── */
+  /* ── 2. Segona escena ─────────────────────────────────── */
   {
-    id: 'formacio',
-    name: 'Formació',
+    id: 'escena-2',
+    name: 'Escena 2',
     color: '#1a7d63', shade: '#145e4a',
-    // image: 'images/formacio.jpg',
+    // image: 'images/escena-2.jpg',
     hotspots: [
       {
-        id: 'fm-1', lon: -30, lat: 8, type: 'info',
-        title: 'Cursos i Tallers',
-        content: 'Àmplia oferta formativa: idiomes, ofimàtica, habilitats professionals, competències digitals i molt més. Formació presencial, semipresencial i en línia adaptada a les teves necessitats.'
+        id: 'e2-1', lon: -30, lat: 8, type: 'info',
+        title: 'Segona escena',
+        content: 'Aquesta és la segona escena del tour. Des del Studio pots afegir-ne tantes com necessitis.'
       },
       {
-        id: 'fm-2', lon: 60, lat: 5, type: 'video',
-        title: 'Catàleg de cursos',
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'Descobreix tots els cursos disponibles a Vallsgenera'
-      },
-      {
-        id: 'fm-3', lon: -110, lat: 3, type: 'image',
-        title: 'Aula de formació',
-        imageUrl: 'https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80',
-        caption: 'Les aules de formació de Vallsgenera estan equipades amb tecnologia d\'última generació'
-      },
-      {
-        id: 'fm-4', lon: 110, lat: 4, type: 'link',
-        title: 'Inscripció a cursos',
-        linkUrl: 'https://www.vallsgenera.cat',
-        linkDesc: 'Inscriu-te als cursos de formació directament des del web de Vallsgenera.'
-      },
-      {
-        id: 'fm-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Anar a Empresa i Emprenedoria',
-        targetScene: 'empresa-emprenedoria'
-      }
-    ]
-  },
-
-  /* ── 3. Empresa i Emprenedoria ────────────────────────── */
-  {
-    id: 'empresa-emprenedoria',
-    name: 'Empresa i Emprenedoria',
-    color: '#0d5e48', shade: '#083d30',
-    // image: 'images/empresa-emprenedoria.jpg',
-    hotspots: [
-      {
-        id: 'ee-1', lon: 40, lat: 10, type: 'info',
-        title: 'Assessorament Empresarial',
-        content: 'Suport expert a nous projectes: pla de negoci, fonts de finançament, tràmits de constitució i estratègia de creixement sostenible. Acompanyament personalitzat en cada fase.'
-      },
-      {
-        id: 'ee-2', lon: -40, lat: 5, type: 'video',
-        title: 'Casos d\'èxit d\'emprenedors',
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'Emprenedors que han comptat amb el suport de Vallsgenera'
-      },
-      {
-        id: 'ee-3', lon: -115, lat: 3, type: 'image',
-        title: 'Incubadora d\'empreses',
-        imageUrl: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=1200&q=80',
-        caption: 'L\'espai d\'incubació de Vallsgenera: on neixen les empreses del futur'
-      },
-      {
-        id: 'ee-4', lon: 115, lat: 4, type: 'link',
-        title: 'Oficina d\'empreses',
-        linkUrl: 'https://www.vallsgenera.cat',
-        linkDesc: 'Accedeix als tràmits i serveis per a empreses i autònoms a través del web de Vallsgenera.'
-      },
-      {
-        id: 'ee-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Anar al Col·laboratori',
-        targetScene: 'col-laboratori'
-      }
-    ]
-  },
-
-  /* ── 4. Col·laboratori ───────────────────────────────── */
-  {
-    id: 'col-laboratori',
-    name: 'Col·laboratori',
-    color: '#127566', shade: '#0d5550',
-    // image: 'images/col-laboratori.jpg',
-    hotspots: [
-      {
-        id: 'cl-1', lon: -20, lat: 8, type: 'info',
-        title: 'Espai de Coworking',
-        content: 'Espai de treball compartit equipat amb fibra òptica, sales de reunions, cabines de trucades i zona de relax. Disponible per hores, diàriament o amb abonament mensual.'
-      },
-      {
-        id: 'cl-2', lon: 75, lat: 5, type: 'video',
-        title: 'Tour per l\'espai coworking',
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'Descobreix l\'espai de coworking del Col·laboratori de Vallsgenera'
-      },
-      {
-        id: 'cl-3', lon: -110, lat: 3, type: 'image',
-        title: 'Sala de reunions',
-        imageUrl: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=1200&q=80',
-        caption: 'La sala de reunions equipada amb videoconferència i presentació'
-      },
-      {
-        id: 'cl-4', lon: 120, lat: 4, type: 'link',
-        title: 'Reserva un espai',
-        linkUrl: 'https://www.vallsgenera.cat',
-        linkDesc: 'Reserva una taula de coworking, una cabina o la sala de reunions en línia.'
-      },
-      {
-        id: 'cl-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Anar a Campus URV i Pacte',
-        targetScene: 'campus-urv-pacte'
-      }
-    ]
-  },
-
-  /* ── 5. Campus URV i Pacte ───────────────────────────── */
-  {
-    id: 'campus-urv-pacte',
-    name: 'Campus URV i Pacte',
-    color: '#0b4f3c', shade: '#073328',
-    // image: 'images/campus-urv-pacte.jpg',
-    hotspots: [
-      {
-        id: 'cu-1', lon: -35, lat: 8, type: 'info',
-        title: 'Campus URV Valls',
-        content: 'Col·laboració estratègica amb la Universitat Rovira i Virgili. Programes de formació superior, recerca aplicada i transferència de coneixement al territori de l\'Alt Camp.'
-      },
-      {
-        id: 'cu-2', lon: 65, lat: 5, type: 'video',
-        title: 'Pacte Local per l\'Ocupació',
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'El Pacte Local per l\'Ocupació de Valls: un acord per al futur'
-      },
-      {
-        id: 'cu-3', lon: -115, lat: 3, type: 'image',
-        title: 'Instal·lacions Campus URV',
-        imageUrl: 'https://images.unsplash.com/photo-1562774053-701939374585?w=1200&q=80',
-        caption: 'Les instal·lacions universitàries al Campus de Valls'
-      },
-      {
-        id: 'cu-4', lon: 120, lat: 4, type: 'link',
-        title: 'Web URV Valls',
-        linkUrl: 'https://www.urv.cat',
-        linkDesc: 'Accedeix al web de la Universitat Rovira i Virgili per a informació sobre programes i matrícules.'
-      },
-      {
-        id: 'cu-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Anar a Atenció i Tràmits',
-        targetScene: 'atencio-tramits'
-      }
-    ]
-  },
-
-  /* ── 6. Atenció i Tràmits ────────────────────────────── */
-  {
-    id: 'atencio-tramits',
-    name: 'Atenció i Tràmits',
-    color: '#1c9070', shade: '#156850',
-    // image: 'images/atencio-tramits.jpg',
-    hotspots: [
-      {
-        id: 'at-1', lon: 30, lat: 8, type: 'info',
-        title: 'Punt d\'Atenció Presencial',
-        content: 'Servei d\'atenció personalitzada en horari d\'oficina. El nostre equip t\'orienta i t\'acompanya en tots els tràmits administratius, inscripcions i sol·licitud de serveis.'
-      },
-      {
-        id: 'at-2', lon: -50, lat: 5, type: 'video',
-        title: 'Com arribar a Vallsgenera',
-        videoUrl: 'https://www.youtube.com/embed/LXb3EKWsInQ',
-        caption: 'Localització i horaris d\'atenció de Vallsgenera'
-      },
-      {
-        id: 'at-3', lon: -120, lat: 3, type: 'image',
-        title: 'Recepció i sala d\'espera',
-        imageUrl: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?w=1200&q=80',
-        caption: 'L\'espai d\'atenció al ciutadà de Vallsgenera'
-      },
-      {
-        id: 'at-4', lon: 110, lat: 4, type: 'link',
-        title: 'Tràmits en línia',
-        linkUrl: 'https://www.vallsgenera.cat',
-        linkDesc: 'Gestiona els teus tràmits des de casa: sol·licituds, inscripcions i documentació disponibles en línia 24h.'
-      },
-      {
-        id: 'at-nav', lon: 175, lat: -10, type: 'nav',
-        title: 'Tornar a l\'inici',
-        targetScene: 'feina-ocupacio'
+        id: 'e2-nav', lon: 175, lat: -10, type: 'nav',
+        title: 'Tornar a Escena 1',
+        targetScene: 'escena-1'
       }
     ]
   }
@@ -549,7 +359,7 @@ class VirtualTour {
 
     ctx.font='24px system-ui,sans-serif';
     ctx.fillStyle='rgba(255,255,255,.5)';
-    ctx.fillText('Tour Virtual · Vallsgenera', W/2, H/2+52);
+    ctx.fillText('Tour Virtual 360°', W/2, H/2+52);
 
     // Badge
     ctx.fillStyle='rgba(0,0,0,.3)';
@@ -1133,7 +943,7 @@ class VirtualTour {
     const a = document.createElement('a');
     a.href = url;
     const sceneName = (this.scenes[this.currentIndex]?.name || 'snapshot').replace(/\s+/g,'-').toLowerCase();
-    a.download = `vallsgenera-${sceneName}.jpg`;
+    a.download = `tour-${sceneName}.jpg`;
     a.click();
   }
 
