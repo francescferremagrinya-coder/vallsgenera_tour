@@ -762,7 +762,57 @@ class Studio {
         `;
       }
 
-      el.addEventListener('click', e => { e.stopPropagation(); this.selectHotspot(hs.id); });
+      // Drag-to-move + click-to-select
+      let dragOrigin = null;
+      let wasDragged = false;
+
+      el.addEventListener('pointerdown', e => {
+        e.stopPropagation();
+        el.setPointerCapture(e.pointerId);
+        dragOrigin = { x: e.clientX, y: e.clientY };
+        wasDragged = false;
+        // Prevent canvas pan while dragging a hotspot
+        this.pointerDown = false;
+      });
+
+      el.addEventListener('pointermove', e => {
+        if (!dragOrigin) return;
+        if (!wasDragged && Math.hypot(e.clientX - dragOrigin.x, e.clientY - dragOrigin.y) > 5) {
+          wasDragged = true;
+          el.classList.add('dragging');
+        }
+        if (!wasDragged) return;
+        const ll = this._screenToLonLat(e.clientX, e.clientY);
+        hs.lon = ll.lon;
+        hs.lat = ll.lat;
+        el.dataset.lon = hs.lon;
+        el.dataset.lat = hs.lat;
+        // Live-update coords in right panel if this hotspot is selected
+        if (this.selectedHsId === hs.id) {
+          const lonEl = document.getElementById('hs-lon-val');
+          const latEl = document.getElementById('hs-lat-val');
+          if (lonEl) lonEl.textContent = hs.lon.toFixed(1);
+          if (latEl) latEl.textContent = hs.lat.toFixed(1);
+        }
+      });
+
+      el.addEventListener('pointerup', e => {
+        if (!dragOrigin) return;
+        el.classList.remove('dragging');
+        dragOrigin = null;
+        if (wasDragged) {
+          this.saveData(true);
+        } else {
+          this.selectHotspot(hs.id);
+        }
+        wasDragged = false;
+      });
+
+      el.addEventListener('pointercancel', () => {
+        el.classList.remove('dragging');
+        dragOrigin = null; wasDragged = false;
+      });
+
       overlay.appendChild(el);
     });
   }
@@ -1266,6 +1316,7 @@ class Studio {
     // Panorama navigation (pointer)
     canvas.addEventListener('pointerdown', e => {
       if (this.addMode) return;
+      if (e.target !== canvas) return; // hotspot has captured pointer
       this.pointerDown = true;
       this.startX = e.clientX; this.startY = e.clientY;
       this.startLon = this.lon; this.startLat = this.lat;

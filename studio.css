@@ -157,9 +157,11 @@ input,textarea,select{font-family:inherit;font-size:13px}
 #studio-hotspots{position:absolute;inset:0;pointer-events:none;z-index:10}
 
 .s-hotspot{
-  position:absolute;pointer-events:all;cursor:pointer;
+  position:absolute;pointer-events:all;cursor:grab;
   transform:translate(-50%,-50%);
+  user-select:none;
 }
+.s-hotspot.dragging{cursor:grabbing!important;}
 .s-hotspot-inner{
   width:36px;height:36px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
