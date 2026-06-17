@@ -1045,9 +1045,8 @@ class VirtualTour {
     el.style.maxHeight = size + 'px';
     el.style.maxWidth  = Math.round(size * 3) + 'px';
 
-    const pad = 14;
-    const topOff = 'calc(var(--topbar-h) + ' + pad + 'px)';
-    el.style.top    = corner.startsWith('t') ? topOff : 'auto';
+    const pad = 6;
+    el.style.top    = corner.startsWith('t') ? pad + 'px' : 'auto';
     el.style.bottom = corner.startsWith('b') ? pad + 'px' : 'auto';
     el.style.left   = corner.endsWith('l')   ? pad + 'px' : 'auto';
     el.style.right  = corner.endsWith('r')   ? pad + 'px' : 'auto';
