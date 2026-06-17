@@ -1047,11 +1047,10 @@ class VirtualTour {
     el.style.maxHeight = size + 'px';
     el.style.maxWidth  = Math.round(size * 3) + 'px';
 
-    const pad = 6;
-    el.style.top    = corner.startsWith('t') ? pad + 'px' : 'auto';
-    el.style.bottom = corner.startsWith('b') ? pad + 'px' : 'auto';
-    el.style.left   = corner.endsWith('l')   ? pad + 'px' : 'auto';
-    el.style.right  = corner.endsWith('r')   ? pad + 'px' : 'auto';
+    el.style.top    = corner.startsWith('t') ? '0' : 'auto';
+    el.style.bottom = corner.startsWith('b') ? '0' : 'auto';
+    el.style.left   = corner.endsWith('l')   ? '0' : 'auto';
+    el.style.right  = corner.endsWith('r')   ? '0' : 'auto';
 
     el.classList.add('visible');
   }
