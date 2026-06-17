@@ -411,7 +411,8 @@ class VirtualTour {
     this._decalMeshes  = [];
     this.globeMode = false;
     this._inTransition = false;
-    this._entryRender  = null; // overrides animate() during entry animation
+    this._entryRender  = null;
+    this._audioMuted   = false;
 
     this.init();
   }
@@ -664,7 +665,7 @@ class VirtualTour {
       if (hs.type === 'nav') {
         const chev = `<svg viewBox="0 0 62 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <polyline points="3,20 31,4 59,20"
-            stroke="white" stroke-width="3.8"
+            stroke="white" stroke-width="5.5"
             stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`;
         el.innerHTML = `
@@ -925,11 +926,21 @@ class VirtualTour {
     window.addEventListener('keydown', e => this.onKeyDown(e));
 
     document.getElementById('info-close').addEventListener('click', () => this.hideInfoPanel());
-    document.getElementById('prev-scene').addEventListener('click', () => this.prevScene());
-    document.getElementById('next-scene').addEventListener('click', () => this.nextScene());
     document.getElementById('scenes-tab').addEventListener('click', () => this.toggleSidebar());
     document.getElementById('sidebar-overlay').addEventListener('click', () => this.closeSidebar());
-    document.getElementById('fullscreen-btn').addEventListener('click', () => this.toggleFullscreen());
+
+    // Bottom control bar
+    document.getElementById('btn-home').addEventListener('click', () => this.loadScene(0));
+    document.getElementById('btn-audio').addEventListener('click', () => this.toggleAudio());
+    document.getElementById('btn-vr').addEventListener('click', () => this.toggleVR());
+    document.getElementById('btn-snapshot').addEventListener('click', () => this.takeSnapshot());
+    document.getElementById('btn-fullscreen').addEventListener('click', () => this.toggleFullscreen());
+
+    document.addEventListener('fullscreenchange', () => {
+      const inFS = !!document.fullscreenElement;
+      document.getElementById('fs-icon-expand').classList.toggle('hidden', inFS);
+      document.getElementById('fs-icon-compress').classList.toggle('hidden', !inFS);
+    });
 
     // (Els botons .dept-btn reben el seu handler a buildSidebarNav)
 
@@ -1049,6 +1060,46 @@ class VirtualTour {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('visible');
   }
+  toggleAudio() {
+    this._audioMuted = !this._audioMuted;
+    document.getElementById('audio-icon-on').classList.toggle('hidden', this._audioMuted);
+    document.getElementById('audio-icon-off').classList.toggle('hidden', !this._audioMuted);
+    document.getElementById('btn-audio').classList.toggle('tc-active', this._audioMuted);
+    // Mute/unmute any audio elements in the page
+    document.querySelectorAll('audio,video').forEach(m => { m.muted = this._audioMuted; });
+  }
+
+  toggleVR() {
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-vr').then(supported => {
+        if (supported) {
+          this.renderer.xr.enabled = true;
+          navigator.xr.requestSession('immersive-vr').then(session => {
+            this.renderer.xr.setSession(session);
+          }).catch(() => this._vrFallback());
+        } else { this._vrFallback(); }
+      });
+    } else { this._vrFallback(); }
+  }
+  _vrFallback() {
+    // Fallback: just go fullscreen + show hint
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+    const t = document.getElementById('pos-toast');
+    if (t) { t.textContent = 'VR: rota el dispositiu per mirar al voltant'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
+  }
+
+  takeSnapshot() {
+    // Force a render first so the canvas has current frame
+    this.renderer.render(this.threeScene, this.camera);
+    const canvas = document.getElementById('panorama-canvas');
+    const url = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    a.href = url;
+    const sceneName = (this.scenes[this.currentIndex]?.name || 'snapshot').replace(/\s+/g,'-').toLowerCase();
+    a.download = `vallsgenera-${sceneName}.jpg`;
+    a.click();
+  }
+
   toggleFullscreen() {
     if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
     else document.exitFullscreen().catch(()=>{});
