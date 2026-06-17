@@ -495,7 +495,6 @@ button{font-family:inherit;cursor:pointer}
   border-color:rgba(15,110,86,.8);
   color:white;
 }
-.hidden{display:none!important}
 
 /* ── Mode posicionament ── */
 #pos-trigger {
