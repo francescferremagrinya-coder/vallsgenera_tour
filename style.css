@@ -582,22 +582,37 @@ button{font-family:inherit;cursor:pointer}
 }
 #pos-toast.show { opacity: 1; }
 
-/* ── Hotspot NAV: Street View style ── */
+/* ── Hotspot NAV: Street View floor arrows ── */
 .hotspot-nav {
   display: flex; flex-direction: column;
   align-items: center; gap: 6px;
   cursor: pointer;
 }
+/* rotateX lays the chevrons flat as if on the ground pointing away */
 .sv-arrow-wrap {
-  transform: perspective(260px) rotateX(34deg);
-  transition: transform .18s ease, filter .18s ease;
-  filter: drop-shadow(0 5px 8px rgba(0,0,0,.55));
+  transform: perspective(160px) rotateX(64deg);
+  display: flex; flex-direction: column;
+  align-items: center; gap: 4px;
+  filter: drop-shadow(0 3px 10px rgba(0,0,0,.65));
+  transition: filter .18s;
 }
-.sv-arrow-wrap svg { width: 42px; height: 54px; display: block; }
 .hotspot-nav:hover .sv-arrow-wrap {
-  transform: perspective(260px) rotateX(34deg) scale(1.18);
-  filter: drop-shadow(0 5px 18px rgba(255,255,255,.35)) brightness(1.12);
+  filter: drop-shadow(0 3px 20px rgba(255,255,255,.4));
 }
+.sv-chevron { line-height: 0; }
+.sv-chevron svg { width: 62px; height: 24px; display: block; }
+/* Sequential pulse: c1 lights up first, then c2, then c3 */
+.sv-c1 { animation: sv-pulse 1.8s ease-in-out infinite 0s; }
+.sv-c2 { animation: sv-pulse 1.8s ease-in-out infinite .38s; }
+.sv-c3 { animation: sv-pulse 1.8s ease-in-out infinite .76s; }
+@keyframes sv-pulse {
+  0%,100% { opacity:.18; }
+  20%      { opacity:1; filter:drop-shadow(0 0 7px rgba(255,255,255,.95)); }
+  55%      { opacity:.18; }
+}
+.hotspot-nav:hover .sv-c1,
+.hotspot-nav:hover .sv-c2,
+.hotspot-nav:hover .sv-c3 { animation: none; opacity: .9; }
 .nav-scene-label {
   color: white; font-size: 11px; font-weight: 600;
   background: rgba(0,0,0,0.52);

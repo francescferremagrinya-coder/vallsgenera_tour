@@ -660,15 +660,18 @@ class VirtualTour {
         return;
       }
 
-      /* Navegació – fletxa Street View */
+      /* Navegació – fletxes estil Street View (tres xevrons horitzontals en perspectiva) */
       if (hs.type === 'nav') {
+        const chev = `<svg viewBox="0 0 62 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="3,20 31,4 59,20"
+            stroke="white" stroke-width="3.8"
+            stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
         el.innerHTML = `
           <div class="sv-arrow-wrap">
-            <svg viewBox="0 0 44 56" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M22 3 L41 34 H29 V53 H15 V34 H3 Z"
-                fill="rgba(255,255,255,0.90)"
-                stroke="rgba(0,0,0,0.18)" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
+            <div class="sv-chevron sv-c1">${chev}</div>
+            <div class="sv-chevron sv-c2">${chev}</div>
+            <div class="sv-chevron sv-c3">${chev}</div>
           </div>
           <div class="nav-scene-label">${hs.title}</div>`;
         el.addEventListener('click', e => { e.stopPropagation(); this.handleHotspot(hs); });
