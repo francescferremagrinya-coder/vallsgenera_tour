@@ -408,9 +408,10 @@ class VirtualTour {
     this.velLon = 0; this.velLat  = 0;
     this.userInteractedAt = 0;
     this.lastPinchDist = null;
-    this._decalMeshes  = []; // Three.js meshes for image overlays
+    this._decalMeshes  = [];
     this.globeMode = false;
-    this._inTransition = false; // true during tiny-planet → equirect animation
+    this._inTransition = false;
+    this._entryRender  = null; // overrides animate() during entry animation
 
     this.init();
   }
@@ -1052,87 +1053,110 @@ class VirtualTour {
   /* ── Animation loop ── */
   animate() {
     requestAnimationFrame(()=>this.animate());
-    this.update();
-    this.renderer.render(this.threeScene, this.camera);
+    if (this._entryRender) {
+      this._entryRender(); // tiny-planet entry animation owns the renderer
+    } else {
+      this.update();
+      this.renderer.render(this.threeScene, this.camera);
+    }
   }
 
-  /* ── Tiny-planet → equirectangular shader transition ── */
+  /* ── Tiny-planet entry: camera outside → flies in → immersive 360°
+     Phase 1 (t=0):  camera at z=camStart, sees sphere as tiny planet
+     Phase 2 (0→1):  camera flies in, FOV widens, UV morphs outside→inside
+     Phase 3 (t=1):  camera at origin, standard inside-sphere 360° tour     ── */
   startTinyPlanetTransition(duration) {
+    // Retry until the panorama texture is ready
     const tex = this.sphere.material && this.sphere.material.map
       ? this.sphere.material.map : null;
+    if (!tex) { setTimeout(() => this.startTinyPlanetTransition(duration), 150); return; }
 
+    this._inTransition = true;
+    this.sphere.visible = false; // hide main sphere while entry plays
+
+    // ── Entry scene: small sphere visible from outside ──────────────────
+    const R = 5;
+    const camStart = 16;
+    const entryScene  = new THREE.Scene();
+    const entryCamera = new THREE.PerspectiveCamera(
+      45, this.camera.aspect, 0.01, 200
+    );
+    entryCamera.position.set(0, 0, camStart);
+    entryCamera.lookAt(0, 0, 0);
+
+    const entryGeo = new THREE.SphereGeometry(R, 64, 48);
     const shaderMat = new THREE.ShaderMaterial({
       uniforms: {
-        uTexture: { value: tex || new THREE.Texture() },
+        uTexture: { value: tex },
         uT:       { value: 0.0 },
       },
       vertexShader: `
         varying vec2 vUv;
-        varying vec3 vPos;
         void main(){
-          vUv  = uv;
-          vPos = position;
+          vUv = uv;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);
         }
       `,
       fragmentShader: `
-        #define PI 3.14159265358979
         uniform sampler2D uTexture;
         uniform float uT;
         varying vec2 vUv;
-        varying vec3 vPos;
         void main(){
-          // Undo the scale(-1,1,1) to get true world direction
-          vec3 d = normalize(vec3(-vPos.x, vPos.y, vPos.z));
-
-          // A — Tiny planet: stereographic projection from north pole
-          //     nadir (d.y=-1) → UV centre (0.5,0.5)
-          float denom = max(1.0 - d.y, 0.0001);
-          vec2 uvA = vec2(d.x, d.z) / denom * 0.2 + 0.5;
-
-          // B — Equirectangular: Three.js-generated UVs (correct by construction)
-          vec2 uvB = vUv;
-
-          float t = smoothstep(0.0, 1.0, uT);
-          gl_FragColor = texture2D(uTexture, mix(uvA, uvB, t));
+          // Seen from outside: standard UV.
+          // Seen from inside: must mirror-u to correct the back-face flip.
+          vec2 uvOut = vUv;
+          vec2 uvIn  = vec2(1.0 - vUv.x, vUv.y);
+          vec2 uv = mix(uvOut, uvIn, smoothstep(0.3, 0.85, uT));
+          gl_FragColor = texture2D(uTexture, uv);
         }
       `,
+      side: THREE.DoubleSide,
     });
 
-    this.sphere.material = shaderMat;
-    this._inTransition = true;
-    this.globeMode = false;
+    const entrySphere = new THREE.Mesh(entryGeo, shaderMat);
+    entryScene.add(entrySphere);
 
-    const savedFov = this.fov;   // 75
-    const startLat = -85.0;
-    const startFov = 130.0;
-    this.lat = startLat;
-    this.camera.fov = startFov;
-    this.camera.updateProjectionMatrix();
-
+    // ── Animate ─────────────────────────────────────────────────────────
     const t0 = performance.now();
-    const tick = () => {
-      const raw = Math.min((performance.now() - t0) / duration, 1.0);
-      // ease-in-out cubic
-      const ease = raw < 0.5 ? 4*raw*raw*raw : 1 - Math.pow(-2*raw+2,3)/2;
+    const eio = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; // ease-in-out cubic
 
+    this._entryRender = () => {
+      const raw  = Math.min((performance.now() - t0) / duration, 1.0);
+      const ease = eio(raw);
+
+      // Slow planet rotation
+      entrySphere.rotation.y += 0.001;
+
+      // Camera flies in
+      entryCamera.position.z = camStart + (0.01 - camStart) * ease;
+      entryCamera.fov = 45 + (this.fov - 45) * ease;
+      entryCamera.aspect = this.camera.aspect;
+      entryCamera.updateProjectionMatrix();
+
+      // UV morph (handled in shader via uT)
       shaderMat.uniforms.uT.value = raw;
-      this.lat = startLat + (0 - startLat) * ease;
-      this.camera.fov = startFov + (savedFov - startFov) * ease;
-      this.camera.updateProjectionMatrix();
 
-      if (raw < 1.0) {
-        requestAnimationFrame(tick);
-      } else {
-        // Restore standard material
+      this.renderer.render(entryScene, entryCamera);
+
+      if (raw >= 1.0) {
+        // ── Handoff to main tour ────────────────────────────────────────
+        entryGeo.dispose();
+        shaderMat.dispose();
+
+        this.sphere.visible = true;
         this.sphere.material = new THREE.MeshBasicMaterial({ map: tex });
+
+        // Match the sphere's rotation so panorama continues seamlessly
+        this.lon = -THREE.MathUtils.radToDeg(entrySphere.rotation.y);
         this.lat = 0;
-        this.camera.fov = savedFov;
+        this.camera.fov = this.fov;
+        this.camera.position.set(0, 0, 0.01);
         this.camera.updateProjectionMatrix();
+
+        this._entryRender  = null;
         this._inTransition = false;
       }
     };
-    requestAnimationFrame(tick);
   }
 
   update() {
