@@ -683,3 +683,32 @@ input,textarea,select{font-family:inherit;font-size:13px}
   transition: background var(--dur);
 }
 #btn-remove-logo:hover { background: rgba(192,57,43,.22); }
+
+/* Logo controls */
+.logo-ctrl-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--text-muted);
+  margin-top: 8px; margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.logo-corners {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+.logo-corner-btn {
+  display: flex; align-items: center; justify-content: center;
+  height: 28px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--dur), border-color var(--dur);
+}
+.logo-corner-btn svg { width: 18px; height: 18px; fill: var(--text-muted); }
+.logo-corner-btn:hover { background: rgba(255,255,255,.1); }
+.logo-corner-btn.active {
+  background: rgba(15,110,86,.25);
+  border-color: var(--accent);
+}
+.logo-corner-btn.active svg { fill: #4ade9e; }
+#logo-size { accent-color: var(--accent); }

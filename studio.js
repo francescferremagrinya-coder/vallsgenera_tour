@@ -1565,30 +1565,60 @@ class Studio {
     });
     document.getElementById('btn-remove-logo').addEventListener('click', () => {
       localStorage.removeItem('vg-logo');
+      localStorage.removeItem('vg-logo-size');
+      localStorage.removeItem('vg-logo-corner');
       this._applyLogoPreview(null);
       this.showToast('Logo eliminat');
+    });
+    document.getElementById('logo-size').addEventListener('input', e => {
+      const v = e.target.value;
+      document.getElementById('logo-size-val').textContent = v + 'px';
+      localStorage.setItem('vg-logo-size', v);
+    });
+    document.querySelectorAll('.logo-corner-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.logo-corner-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        localStorage.setItem('vg-logo-corner', btn.dataset.corner);
+      });
     });
   }
 
   _initLogo() {
-    const src = localStorage.getItem('vg-logo');
+    const src    = localStorage.getItem('vg-logo');
+    const size   = localStorage.getItem('vg-logo-size')   || '112';
+    const corner = localStorage.getItem('vg-logo-corner') || 'tr';
+
+    // Restore slider + corner buttons
+    const slider = document.getElementById('logo-size');
+    if (slider) {
+      slider.value = size;
+      document.getElementById('logo-size-val').textContent = size + 'px';
+    }
+    document.querySelectorAll('.logo-corner-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.corner === corner);
+    });
+
     this._applyLogoPreview(src);
   }
 
   _applyLogoPreview(src) {
-    const preview  = document.getElementById('logo-preview');
+    const preview     = document.getElementById('logo-preview');
     const placeholder = document.getElementById('logo-placeholder');
     const removeBtn   = document.getElementById('btn-remove-logo');
+    const controls    = document.getElementById('logo-controls');
     if (src) {
       preview.src = src;
       preview.style.display = 'block';
       placeholder.style.display = 'none';
       removeBtn.style.display = 'block';
+      if (controls) controls.style.display = 'block';
     } else {
       preview.src = '';
       preview.style.display = 'none';
       placeholder.style.display = '';
       removeBtn.style.display = 'none';
+      if (controls) controls.style.display = 'none';
     }
   }
 

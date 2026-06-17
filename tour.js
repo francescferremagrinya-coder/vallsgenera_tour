@@ -1034,11 +1034,25 @@ class VirtualTour {
 
   /* ── Logo overlay ── */
   loadLogo() {
-    const src = localStorage.getItem('vg-logo');
+    const src    = localStorage.getItem('vg-logo');
+    const size   = parseInt(localStorage.getItem('vg-logo-size') || '112', 10);
+    const corner = localStorage.getItem('vg-logo-corner') || 'tr';
     const el = document.getElementById('logo-overlay');
     if (!el) return;
-    if (src) { el.src = src; el.classList.add('visible'); }
-    else { el.classList.remove('visible'); }
+    if (!src) { el.classList.remove('visible'); return; }
+
+    el.src = src;
+    el.style.maxHeight = size + 'px';
+    el.style.maxWidth  = Math.round(size * 3) + 'px';
+
+    const pad = 14;
+    const topOff = 'calc(var(--topbar-h) + ' + pad + 'px)';
+    el.style.top    = corner.startsWith('t') ? topOff : 'auto';
+    el.style.bottom = corner.startsWith('b') ? pad + 'px' : 'auto';
+    el.style.left   = corner.endsWith('l')   ? pad + 'px' : 'auto';
+    el.style.right  = corner.endsWith('r')   ? pad + 'px' : 'auto';
+
+    el.classList.add('visible');
   }
 
   toggleSidebar() {
