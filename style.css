@@ -4,9 +4,9 @@
    ============================================================ */
 
 :root {
-  --primary:       #0F6E56;
-  --primary-dark:  #0a5040;
-  --primary-light: #17856a;
+  --primary:       #b9ce00;
+  --primary-dark:  #6b7a00;
+  --primary-light: #ccde10;
   --white:         #ffffff;
   --text:          #1a2e28;
   --sidebar-w:     0px;
@@ -20,7 +20,7 @@
   --dur:           0.25s;
 
   /* Hotspot colours */
-  --hs-info:   #0F6E56;
+  --hs-info:   #b9ce00;
   --hs-video:  #1d4ed8;
   --hs-image:  #7c3aed;
   --hs-link:   #c2410c;
@@ -89,7 +89,7 @@ button{font-family:inherit;cursor:pointer}
   bottom:4%;left:50%;transform:translateX(-50%);
   white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:12px;
-  color:#0F6E56;font-size:13px;font-weight:700;letter-spacing:2.5px;
+  color:#b9ce00;font-size:13px;font-weight:700;letter-spacing:2.5px;
   text-transform:uppercase;
   pointer-events:none;
 }
@@ -98,11 +98,11 @@ button{font-family:inherit;cursor:pointer}
 }
 .splash-cta-pulse{
   width:14px;height:14px;border-radius:50%;
-  background:#0F6E56;position:relative;flex-shrink:0;
+  background:#b9ce00;position:relative;flex-shrink:0;
 }
 .splash-cta-pulse::before,.splash-cta-pulse::after{
   content:'';position:absolute;border-radius:50%;
-  border:1.5px solid rgba(15,110,86,.45);
+  border:1.5px solid rgba(185,206,0,.55);
   top:50%;left:50%;
 }
 .splash-cta-pulse::before{
@@ -128,7 +128,7 @@ button{font-family:inherit;cursor:pointer}
   position:fixed;left:0;top:50%;transform:translateY(-50%);
   z-index:220;
   background:var(--primary);
-  color:rgba(255,255,255,.9);
+  color:rgba(0,0,0,.8);
   border-radius:0 8px 8px 0;
   padding:12px 10px;
   display:flex;align-items:center;justify-content:center;
@@ -138,7 +138,7 @@ button{font-family:inherit;cursor:pointer}
   border:none;font-family:inherit;
   user-select:none;
 }
-#scenes-tab:hover{background:var(--primary-light);padding-left:14px}
+#scenes-tab:hover{background:var(--primary-light);padding-left:14px;color:rgba(0,0,0,.9)}
 
 /* Drawer */
 #sidebar{
@@ -164,7 +164,7 @@ button{font-family:inherit;cursor:pointer}
 
 .dept-btn{
   display:flex;align-items:center;gap:9px;width:100%;
-  padding:9px 10px;background:transparent;border:none;
+  padding:7px 10px;background:transparent;border:none;
   border-radius:7px;
   color:rgba(255,255,255,.72);text-align:left;font-size:13px;
   margin-bottom:2px;
@@ -176,6 +176,11 @@ button{font-family:inherit;cursor:pointer}
 .dept-btn.active::before{
   content:'';position:absolute;left:0;top:20%;bottom:20%;
   width:3px;border-radius:0 2px 2px 0;background:var(--primary-light);
+}
+.dept-thumb{
+  width:38px;height:28px;border-radius:3px;flex-shrink:0;
+  background-size:cover;background-position:center;
+  border:1px solid rgba(255,255,255,.12);
 }
 .dept-name{flex:1;line-height:1.25}
 .dept-arrow{font-size:15px;opacity:.3;transition:opacity var(--dur),transform var(--dur)}
@@ -288,7 +293,7 @@ button{font-family:inherit;cursor:pointer}
 
 .hotspot:hover .hotspot-inner{transform:scale(1.18);box-shadow:0 8px 28px rgba(0,0,0,.45);animation:none}
 
-@keyframes pulse-green  {0%,100%{box-shadow:var(--shadow-md),0 0 0 0 rgba(15,110,86,.55)} 50%{box-shadow:var(--shadow-md),0 0 0 14px rgba(15,110,86,0)}}
+@keyframes pulse-green  {0%,100%{box-shadow:var(--shadow-md),0 0 0 0 rgba(185,206,0,.7)} 50%{box-shadow:var(--shadow-md),0 0 0 14px rgba(185,206,0,0)}}
 @keyframes pulse-blue   {0%,100%{box-shadow:var(--shadow-md),0 0 0 0 rgba(29,78,216,.55)} 50%{box-shadow:var(--shadow-md),0 0 0 14px rgba(29,78,216,0)}}
 @keyframes pulse-purple {0%,100%{box-shadow:var(--shadow-md),0 0 0 0 rgba(124,58,237,.55)} 50%{box-shadow:var(--shadow-md),0 0 0 14px rgba(124,58,237,0)}}
 @keyframes pulse-orange {0%,100%{box-shadow:var(--shadow-md),0 0 0 0 rgba(194,65,12,.55)} 50%{box-shadow:var(--shadow-md),0 0 0 14px rgba(194,65,12,0)}}
@@ -323,7 +328,7 @@ button{font-family:inherit;cursor:pointer}
 #info-panel.visible{transform:translateY(0) scale(1);opacity:1;pointer-events:all}
 
 .info-panel-header{
-  background:var(--primary);color:white;padding:13px 15px;
+  background:var(--primary);color:rgba(0,0,0,.85);padding:13px 15px;
   display:flex;align-items:flex-start;gap:10px;
 }
 .info-panel-icon{
@@ -332,15 +337,15 @@ button{font-family:inherit;cursor:pointer}
   display:flex;align-items:center;justify-content:center;
   margin-top:2px;
 }
-.info-panel-icon svg{width:14px;height:14px;stroke:white}
+.info-panel-icon svg{width:14px;height:14px;stroke:rgba(0,0,0,.7)}
 #info-title{flex:1;font-size:14px;font-weight:600;line-height:1.3;margin:3px 0 0}
 #info-close{
   width:26px;height:26px;flex-shrink:0;
-  background:rgba(255,255,255,.18);border:none;border-radius:50%;
-  color:white;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.12);border:none;border-radius:50%;
+  color:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;
   transition:background var(--dur);margin-top:1px;
 }
-#info-close:hover{background:rgba(255,255,255,.3)}
+#info-close:hover{background:rgba(0,0,0,.2)}
 .info-panel-body{padding:15px 17px}
 #info-content{font-size:13.5px;line-height:1.65;color:var(--text);margin:0}
 
@@ -439,13 +444,13 @@ button{font-family:inherit;cursor:pointer}
 .lb-link-desc{font-size:14px;color:rgba(255,255,255,.7);line-height:1.55;max-width:380px}
 .lb-link-btn{
   display:inline-flex;align-items:center;gap:8px;
-  background:var(--primary);color:white;
+  background:var(--primary);color:rgba(0,0,0,.85);
   padding:11px 22px;border-radius:var(--radius-sm);
   font-size:14px;font-weight:600;text-decoration:none;
   transition:background var(--dur);border:none;
 }
 .lb-link-btn:hover{background:var(--primary-light)}
-.lb-link-btn svg{width:15px;height:15px;stroke:white}
+.lb-link-btn svg{width:15px;height:15px;stroke:rgba(0,0,0,.8)}
 
 .lb-caption{
   padding:10px 16px;
@@ -480,9 +485,9 @@ button{font-family:inherit;cursor:pointer}
   color:white;
 }
 #tour-controls button.tc-active{
-  background:rgba(15,110,86,.45);
-  border-color:rgba(15,110,86,.8);
-  color:white;
+  background:rgba(185,206,0,.45);
+  border-color:rgba(185,206,0,.8);
+  color:rgba(0,0,0,.8);
 }
 
 /* ── Logo overlay (mosca) ── */
@@ -503,7 +508,7 @@ button{font-family:inherit;cursor:pointer}
   position: absolute;
   top: calc(var(--topbar-h) + 70px);
   left: 50%; transform: translateX(-50%);
-  background: #0F6E56; color: white;
+  background: #b9ce00; color: rgba(0,0,0,.85);
   padding: 9px 18px; border-radius: 8px;
   font-size: 13px; font-weight: 600;
   pointer-events: none; z-index: 50;

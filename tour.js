@@ -436,14 +436,13 @@ class VirtualTour {
     const nav = document.querySelector('.dept-nav');
     if (!nav) return;
     nav.querySelectorAll('.dept-btn').forEach(b => b.remove());
-    const pin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
     this.scenes.forEach((s, i) => {
-      if (s.visible === false) return; // scenes marked hidden in Studio are omitted
+      if (s.visible === false) return;
       const btn = document.createElement('button');
       btn.className = 'dept-btn' + (i === this.currentIndex ? ' active' : '');
       btn.dataset.index = i;
       btn.innerHTML =
-        `<span class="dept-icon">${pin}</span>` +
+        `<span class="dept-thumb" style="background:${s.color}"></span>` +
         `<span class="dept-name">${this.escapeHtml(s.name)}</span>` +
         `<span class="dept-arrow">›</span>`;
       btn.addEventListener('click', () => {
@@ -451,6 +450,16 @@ class VirtualTour {
         this.closeSidebar();
       });
       nav.appendChild(btn);
+      // Async: load scene photo thumbnail from IndexedDB
+      PhotoStore.get(s.id).then(blob => {
+        if (!blob) return;
+        const thumb = btn.querySelector('.dept-thumb');
+        if (!thumb) return;
+        const url = URL.createObjectURL(blob);
+        thumb.style.backgroundImage = `url(${url})`;
+        thumb.style.backgroundSize = 'cover';
+        thumb.style.backgroundPosition = 'center';
+      }).catch(() => {});
     });
   }
 

@@ -739,8 +739,13 @@ class Studio {
       el.dataset.id  = hs.id;
 
       if (hs.type === 'nav') {
-        const chev = `<svg class="s-nav-chevron" viewBox="0 0 24 10" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,9 12,1 23,9"/></svg>`;
-        el.innerHTML = `<div class="s-nav-ring">${chev}${chev}${chev}</div>
+        const chev = `<svg viewBox="0 0 62 24" fill="none"><polyline points="3,20 31,4 59,20" stroke="white" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+        el.innerHTML = `
+          <div class="sv-arrow-wrap">
+            <div class="sv-chevron sv-c1">${chev}</div>
+            <div class="sv-chevron sv-c2">${chev}</div>
+            <div class="sv-chevron sv-c3">${chev}</div>
+          </div>
           <div class="s-hotspot-lbl">${hs.title}</div>`;
       } else if (hs.type === 'text') {
         const st = hs.style || {};
